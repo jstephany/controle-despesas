@@ -9,14 +9,18 @@ import {
 } from 'react';
 
 import { getDatabase } from '@/data/database/client';
+import { SqliteBudgetRepository } from '@/data/repositories/SqliteBudgetRepository';
 import { SqliteExpenseRepository } from '@/data/repositories/SqliteExpenseRepository';
+import type { BudgetEvaluation, MonthlyBudget } from '@/domain/entities/Budget';
 import type {
   CreateExpenseInput,
   Expense,
   MonthPeriod,
   UpdateExpenseInput,
 } from '@/domain/entities/Expense';
+import type { IBudgetRepository } from '@/domain/repositories/BudgetRepository';
 import type { IExpenseRepository } from '@/domain/repositories/ExpenseRepository';
+import { evaluateMonthlyBudget } from '@/domain/services/budgetService';
 import {
   calculateCategoryBreakdown,
   calculateMonthlyTotal,
@@ -35,6 +39,8 @@ export interface ExpensesContextValue {
   readonly expenses: Expense[];
   readonly monthlyTotalCents: number;
   readonly categoryBreakdown: CategoryBreakdownItem[];
+  readonly monthlyBudget: MonthlyBudget | null;
+  readonly budgetEvaluation: BudgetEvaluation | null;
   readonly isInitializing: boolean;
   readonly isLoading: boolean;
   readonly error: string | null;
@@ -46,6 +52,8 @@ export interface ExpensesContextValue {
   readonly addExpense: (input: CreateExpenseInput) => Promise<Expense>;
   readonly updateExpense: (input: UpdateExpenseInput) => Promise<Expense>;
   readonly deleteExpense: (id: string) => Promise<void>;
+  readonly saveMonthlyBudget: (limitCents: number) => Promise<MonthlyBudget>;
+  readonly removeMonthlyBudget: () => Promise<void>;
   readonly refresh: () => Promise<void>;
 }
 
@@ -54,6 +62,7 @@ export const ExpensesContext = createContext<ExpensesContextValue | null>(null);
 interface ExpensesProviderProps {
   readonly children: ReactNode;
   readonly repository?: IExpenseRepository;
+  readonly budgetRepository?: IBudgetRepository;
   readonly initialPeriod?: MonthPeriod;
 }
 
@@ -64,21 +73,27 @@ function getPeriodKey(period: MonthPeriod): string {
 export function ExpensesProvider({
   children,
   repository: injectedRepository,
+  budgetRepository: injectedBudgetRepository,
   initialPeriod,
 }: ExpensesProviderProps) {
   const [sqliteRepository, setSqliteRepository] =
     useState<IExpenseRepository | null>(null);
+  const [sqliteBudgetRepository, setSqliteBudgetRepository] =
+    useState<IBudgetRepository | null>(null);
   const [initDone, setInitDone] = useState<boolean>(false);
   const [selectedPeriod, setSelectedPeriod] = useState<MonthPeriod>(
     () => initialPeriod ?? getCurrentMonthPeriod()
   );
   const [expenses, setExpenses] = useState<Expense[]>([]);
+  const [monthlyBudget, setMonthlyBudget] = useState<MonthlyBudget | null>(null);
   const [loadedPeriodKey, setLoadedPeriodKey] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const loadRequestIdRef = useRef(0);
 
   const activeRepository = injectedRepository ?? sqliteRepository;
+  const activeBudgetRepository =
+    injectedBudgetRepository ?? sqliteBudgetRepository;
   const isInitializing = !injectedRepository && !initDone;
   const currentPeriodKey = getPeriodKey(selectedPeriod);
   const isLoading =
@@ -95,6 +110,7 @@ export function ExpensesProvider({
       .then((db) => {
         if (cancelled) return;
         setSqliteRepository(new SqliteExpenseRepository(db));
+        setSqliteBudgetRepository(new SqliteBudgetRepository(db));
         setError(null);
         setInitDone(true);
       })
@@ -121,11 +137,16 @@ export function ExpensesProvider({
     const requestId = ++loadRequestIdRef.current;
     const periodKey = getPeriodKey(selectedPeriod);
 
-    activeRepository
-      .findByMonth(selectedPeriod)
-      .then((data) => {
+    Promise.all([
+      activeRepository.findByMonth(selectedPeriod),
+      activeBudgetRepository
+        ? activeBudgetRepository.getByMonth(selectedPeriod)
+        : Promise.resolve(null),
+    ])
+      .then(([expenseList, budget]) => {
         if (requestId !== loadRequestIdRef.current) return;
-        setExpenses(sortExpensesChronologically(data));
+        setExpenses(sortExpensesChronologically(expenseList));
+        setMonthlyBudget(budget);
         setError(null);
         setLoadedPeriodKey(periodKey);
       })
@@ -138,7 +159,7 @@ export function ExpensesProvider({
         );
         setLoadedPeriodKey(periodKey);
       });
-  }, [activeRepository, selectedPeriod]);
+  }, [activeRepository, activeBudgetRepository, selectedPeriod]);
 
   const selectPeriod = useCallback((period: MonthPeriod) => {
     setSelectedPeriod(period);
@@ -235,6 +256,31 @@ export function ExpensesProvider({
     [activeRepository]
   );
 
+  const saveMonthlyBudget = useCallback(
+    async (limitCents: number): Promise<MonthlyBudget> => {
+      if (!activeBudgetRepository) {
+        throw new Error('Banco de dados local ainda não está pronto.');
+      }
+
+      const saved = await activeBudgetRepository.upsert(
+        selectedPeriod,
+        limitCents
+      );
+      setMonthlyBudget(saved);
+      return saved;
+    },
+    [activeBudgetRepository, selectedPeriod]
+  );
+
+  const removeMonthlyBudget = useCallback(async (): Promise<void> => {
+    if (!activeBudgetRepository) {
+      throw new Error('Banco de dados local ainda não está pronto.');
+    }
+
+    await activeBudgetRepository.deleteByMonth(selectedPeriod);
+    setMonthlyBudget(null);
+  }, [activeBudgetRepository, selectedPeriod]);
+
   const refresh = useCallback(async () => {
     if (!activeRepository) {
       return;
@@ -242,9 +288,15 @@ export function ExpensesProvider({
     const requestId = ++loadRequestIdRef.current;
     const periodKey = getPeriodKey(selectedPeriod);
     try {
-      const data = await activeRepository.findByMonth(selectedPeriod);
+      const [expenseList, budget] = await Promise.all([
+        activeRepository.findByMonth(selectedPeriod),
+        activeBudgetRepository
+          ? activeBudgetRepository.getByMonth(selectedPeriod)
+          : Promise.resolve(null),
+      ]);
       if (requestId === loadRequestIdRef.current) {
-        setExpenses(sortExpensesChronologically(data));
+        setExpenses(sortExpensesChronologically(expenseList));
+        setMonthlyBudget(budget);
         setError(null);
         setLoadedPeriodKey(periodKey);
       }
@@ -258,7 +310,7 @@ export function ExpensesProvider({
         setLoadedPeriodKey(periodKey);
       }
     }
-  }, [activeRepository, selectedPeriod]);
+  }, [activeRepository, activeBudgetRepository, selectedPeriod]);
 
   const monthlyTotalCents = useMemo(
     () => calculateMonthlyTotal(expenses),
@@ -270,12 +322,22 @@ export function ExpensesProvider({
     [expenses]
   );
 
+  const budgetEvaluation = useMemo(
+    () =>
+      monthlyBudget
+        ? evaluateMonthlyBudget(monthlyTotalCents, monthlyBudget.limitCents)
+        : null,
+    [monthlyBudget, monthlyTotalCents]
+  );
+
   const value = useMemo<ExpensesContextValue>(
     () => ({
       selectedPeriod,
       expenses,
       monthlyTotalCents,
       categoryBreakdown,
+      monthlyBudget,
+      budgetEvaluation,
       isInitializing,
       isLoading,
       error,
@@ -287,6 +349,8 @@ export function ExpensesProvider({
       addExpense,
       updateExpense,
       deleteExpense,
+      saveMonthlyBudget,
+      removeMonthlyBudget,
       refresh,
     }),
     [
@@ -294,6 +358,8 @@ export function ExpensesProvider({
       expenses,
       monthlyTotalCents,
       categoryBreakdown,
+      monthlyBudget,
+      budgetEvaluation,
       isInitializing,
       isLoading,
       error,
@@ -305,6 +371,8 @@ export function ExpensesProvider({
       addExpense,
       updateExpense,
       deleteExpense,
+      saveMonthlyBudget,
+      removeMonthlyBudget,
       refresh,
     ]
   );

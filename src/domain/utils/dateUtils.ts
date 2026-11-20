@@ -2,6 +2,7 @@ import type { MonthPeriod } from '../entities/Expense';
 
 const ISO_DATE_PATTERN = /^(\d{4})-(\d{2})-(\d{2})$/;
 const BR_DATE_PATTERN = /^(\d{2})\/(\d{2})\/(\d{4})$/;
+const MONTH_KEY_PATTERN = /^(\d{4})-(0[1-9]|1[0-2])$/;
 
 const MONTH_NAMES_PT_BR = [
   'Janeiro',
@@ -144,4 +145,12 @@ export function getMonthPeriodFromIsoDate(isoDate: string): MonthPeriod | null {
     year: Number(yearStr),
     month: Number(monthStr),
   };
+}
+
+export function formatMonthPeriodKey(period: MonthPeriod): string {
+  return `${period.year}-${pad2(period.month)}`;
+}
+
+export function isValidMonthKey(value: string): boolean {
+  return MONTH_KEY_PATTERN.test(value);
 }

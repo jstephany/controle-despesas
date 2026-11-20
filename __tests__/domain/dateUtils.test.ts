@@ -1,5 +1,6 @@
 import {
   formatIsoDateToBR,
+  formatMonthPeriodKey,
   formatMonthPeriodLabel,
   getCurrentMonthPeriod,
   getMonthDateRange,
@@ -9,6 +10,7 @@ import {
   getRelativeIsoDate,
   getTodayIsoDate,
   isValidIsoDate,
+  isValidMonthKey,
   parseUserDateToIso,
 } from '@/domain/utils/dateUtils';
 
@@ -87,6 +89,16 @@ describe('dateUtils', () => {
       expect(getRelativeIsoDate(-1, ref)).toBe('2026-11-19');
       expect(getMonthPeriodFromIsoDate('2026-11-20')).toEqual({ year: 2026, month: 11 });
       expect(getMonthPeriodFromIsoDate('invalid')).toBeNull();
+    });
+
+    it('formata e valida chaves mensais no padrão YYYY-MM', () => {
+      expect(formatMonthPeriodKey({ year: 2026, month: 3 })).toBe('2026-03');
+      expect(formatMonthPeriodKey({ year: 2026, month: 11 })).toBe('2026-11');
+      expect(isValidMonthKey('2026-01')).toBe(true);
+      expect(isValidMonthKey('2026-12')).toBe(true);
+      expect(isValidMonthKey('2026-13')).toBe(false);
+      expect(isValidMonthKey('2026-00')).toBe(false);
+      expect(isValidMonthKey('11/2026')).toBe(false);
     });
   });
 });

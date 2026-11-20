@@ -1,6 +1,6 @@
 import type { SQLiteExecutor } from './types';
 
-export const DATABASE_VERSION = 1;
+export const DATABASE_VERSION = 2;
 
 const MIGRATION_V1_SQL = `
   PRAGMA journal_mode = WAL;
@@ -16,6 +16,16 @@ const MIGRATION_V1_SQL = `
 
   CREATE INDEX IF NOT EXISTS idx_expenses_date
     ON expenses (date DESC, created_at DESC, id DESC);
+
+  PRAGMA user_version = 1;
+`;
+
+const MIGRATION_V2_SQL = `
+  CREATE TABLE IF NOT EXISTS monthly_budgets (
+    month_key TEXT PRIMARY KEY NOT NULL,
+    limit_cents INTEGER NOT NULL CHECK (limit_cents > 0),
+    updated_at TEXT NOT NULL
+  );
 
   PRAGMA user_version = ${DATABASE_VERSION};
 `;
@@ -34,5 +44,9 @@ export async function migrateDatabase(db: SQLiteExecutor): Promise<void> {
 
   if (currentVersion < 1) {
     await db.execAsync(MIGRATION_V1_SQL);
+  }
+
+  if (currentVersion < 2) {
+    await db.execAsync(MIGRATION_V2_SQL);
   }
 }

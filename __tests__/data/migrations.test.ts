@@ -19,7 +19,7 @@ function createFakeDb(initialVersion: number) {
 }
 
 describe('migrateDatabase', () => {
-  it('cria tabela expenses com constraint CHECK, índice de data e atualiza user_version quando versão é 0', async () => {
+  it('cria tabelas expenses e monthly_budgets com constraints e atualiza user_version quando versão é 0', async () => {
     const { db, executedSql } = createFakeDb(0);
 
     await migrateDatabase(db);
@@ -28,6 +28,19 @@ describe('migrateDatabase', () => {
     expect(combinedSql).toContain('CREATE TABLE IF NOT EXISTS expenses');
     expect(combinedSql).toContain('CHECK (amount_cents > 0)');
     expect(combinedSql).toContain('CREATE INDEX IF NOT EXISTS idx_expenses_date');
+    expect(combinedSql).toContain('CREATE TABLE IF NOT EXISTS monthly_budgets');
+    expect(combinedSql).toContain('CHECK (limit_cents > 0)');
+    expect(combinedSql).toContain(`PRAGMA user_version = ${DATABASE_VERSION}`);
+  });
+
+  it('executa apenas a migração v2 ao atualizar de um banco já na versão 1', async () => {
+    const { db, executedSql } = createFakeDb(1);
+
+    await migrateDatabase(db);
+
+    const combinedSql = executedSql.join('\n');
+    expect(combinedSql).not.toContain('CREATE TABLE IF NOT EXISTS expenses');
+    expect(combinedSql).toContain('CREATE TABLE IF NOT EXISTS monthly_budgets');
     expect(combinedSql).toContain(`PRAGMA user_version = ${DATABASE_VERSION}`);
   });
 
