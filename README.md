@@ -15,7 +15,12 @@ O projeto segue uma **Arquitetura Limpa Pragmática**, separando claramente as r
   - `services/expenseValidation.ts`: validação completa de descrição, valor estritamente positivo, data real e categoria (`validateExpenseInput`).
   - `services/expenseCalculations.ts`: soma mensal exata em centavos, filtro por período, ordenação cronológica imutável e resumo mensal (`calculateMonthlySummary`).
   - `utils/dateUtils.ts` e `utils/idGenerator.ts`: datas timezone-safe (`YYYY-MM-DD`), navegação mês/ano com virada de ano e geração offline de IDs.
-- **Dados (`src/data/`):** cliente `expo-sqlite`, migrações versionadas via `PRAGMA user_version`, mapeadores e implementação concreta do repositório (`SqliteExpenseRepository`).
+- **Dados (`src/data/`):** implementado com persistência 100% local via `expo-sqlite`:
+  - `database/types.ts`: interface `SQLiteExecutor` (subconjunto estrutural de `SQLiteDatabase`) para injeção de dependência e testes unitários sem acoplamento nativo.
+  - `database/migrations.ts`: criação idempotente da tabela `expenses` (`CHECK (amount_cents > 0)`), modo `WAL`, índice composto `idx_expenses_date` e versionamento nativo via `PRAGMA user_version`.
+  - `database/client.ts`: abertura singleton assíncrona (`openDatabaseAsync('expenses.db')`) com execução automática de migrações e recuperação em caso de erro.
+  - `mappers/expenseMapper.ts`: conversão tipada `ExpenseRow` (`snake_case`) ↔ `Expense` (`camelCase`) com fallback seguro de categoria.
+  - `repositories/SqliteExpenseRepository.ts`: implementação concreta de `IExpenseRepository` com queries parametrizadas (`create`, `findByMonth` por intervalo `[startDate, endDate)` e `deleteById`) e checagens defensivas de invariantes.
 - **Apresentação (`app/` e `src/presentation/`):** rotas finas no Expo Router (`app/`), gerenciamento de estado com Context API e componentes/telas desacoplados das regras de negócio.
 
 ### Justificativa Técnica
