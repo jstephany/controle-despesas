@@ -1,4 +1,4 @@
-# Controle de Despesas (Offline-First)
+# Controle de Despesas
 
 Aplicativo mobile de controle de despesas pessoais desenvolvido com **React Native + Expo**, funcionando **100% offline** com persistência local em **SQLite**. O projeto separa domínio, dados e interface em camadas independentes, com valores armazenados em centavos inteiros e cobertura de testes unitários com Jest.
 
