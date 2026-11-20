@@ -1,98 +1,157 @@
 # Controle de Despesas (Offline-First)
 
-Aplicativo mobile desenvolvido em **React Native + Expo** para controle de despesas pessoais **100% offline**, com persistência local em **SQLite** e arquitetura modular orientada a testes.
+Aplicativo mobile multiplataforma desenvolvido com **React Native + Expo** para controle pessoal de despesas **100% offline**, com persistência local em **SQLite**, arquitetura limpa em camadas, identidade visual editorial (**Eco-Fintech Editorial**), responsividade para celulares compactos e tablets, e cobertura de testes unitários com **Jest**.
 
 ---
 
-## Arquitetura Adotada
+## Visão Geral
 
-O projeto segue uma **Arquitetura Limpa Pragmática**, separando claramente as responsabilidades em três camadas independentes:
-
-- **Domínio (`src/domain/`):** implementado em TypeScript puro (zero dependências de React Native/Expo):
-  - `entities/Expense.ts` e `entities/Category.ts`: modelos de despesa, período mensal e catálogo tipado de categorias (`EXPENSE_CATEGORIES`).
-  - `repositories/ExpenseRepository.ts`: contrato `IExpenseRepository` para inversão de dependência.
-  - `services/currency.ts`: conversão segura PT-BR/EN → centavos inteiros (`parseCurrencyToCents`) e formatação BRL (`formatCentsToBRL`).
-  - `services/expenseValidation.ts`: validação completa de descrição, valor estritamente positivo, data real e categoria (`validateExpenseInput`).
-  - `services/expenseCalculations.ts`: soma mensal exata em centavos, filtro por período, ordenação cronológica imutável e resumo mensal (`calculateMonthlySummary`).
-  - `utils/dateUtils.ts` e `utils/idGenerator.ts`: datas timezone-safe (`YYYY-MM-DD`), navegação mês/ano com virada de ano e geração offline de IDs.
-- **Dados (`src/data/`):** implementado com persistência 100% local via `expo-sqlite`:
-  - `database/types.ts`: interface `SQLiteExecutor` (subconjunto estrutural de `SQLiteDatabase`) para injeção de dependência e testes unitários sem acoplamento nativo.
-  - `database/migrations.ts`: criação idempotente das tabelas `expenses` (`CHECK (amount_cents > 0)`) e `monthly_budgets` (`CHECK (limit_cents > 0)`, indexada por `YYYY-MM`), modo `WAL`, índice composto `idx_expenses_date` e versionamento nativo via `PRAGMA user_version` (v2).
-  - `database/client.ts`: abertura singleton assíncrona (`openDatabaseAsync('expenses.db')`) com execução automática de migrações e recuperação em caso de erro.
-  - `mappers/expenseMapper.ts`: conversão tipada `ExpenseRow` (`snake_case`) ↔ `Expense` (`camelCase`) com fallback seguro de categoria.
-  - `repositories/SqliteExpenseRepository.ts` e `repositories/SqliteBudgetRepository.ts`: implementações concretas com queries parametrizadas e checagens defensivas de invariantes.
-- **Apresentação (`app/` e `src/presentation/`):** implementada com identidade visual **"Eco-Fintech Editorial"** (canvas quente `#F6F3EB`, contraste em carvão `#161615`, categorias em tons orgânicos/pastéis e `tabular-nums` em todos os valores e datas):
-  - `theme/theme.ts`: tokens centralizados de cores, tipografia, espaçamentos, raios e paleta visual por categoria.
-  - `context/ExpensesContext.tsx` e `hooks/useExpenses.ts`: estado reativo do período ativo, listagem, resumo mensal, gráfico por categoria e ações offline (`addExpense`, `deleteExpense`, navegação mês/ano).
-  - `screens/HomeScreen.tsx`, `screens/AnalyticsScreen.tsx` e `screens/NewExpenseScreen.tsx`: telas desacopladas de SQL e regras de validação, conectadas às rotas finas `app/(tabs)/index.tsx`, `app/(tabs)/analytics.tsx`, `app/(tabs)/_layout.tsx`, `app/new-expense.tsx` e `app/_layout.tsx`.
-  - `components/`: `FloatingTabBar` (barra inferior flutuante em `#161615` com botão central `+`), `MonthSelector`, `MonthlySummaryCard` (gráfico circular/donut interativo com `react-native-svg` e animação suave na troca de mês), `BudgetProgressSection` e `BudgetModal` (orçamento mensal opcional com alertas em 3 níveis), `CategoryFilterBar`, `ExpenseItem` (toque para editar + exclusão), `EmptyState`, `CategoryPicker` e `FormFieldError`.
-
-### Justificativa Técnica
-- **Valores monetários em centavos (`INTEGER`):** evita erros de arredondamento de ponto flutuante em somas mensais.
-- **Datas em ISO local (`YYYY-MM-DD`):** evita deslocamentos de fuso horário que alteram o mês de referência de uma despesa.
-- **SQLite direto (`expo-sqlite`):** atende o modelo offline de tabela única com máxima confiabilidade e zero overhead de ORM.
-- **Path alias (`@/*` → `src/*`):** mantém imports limpos e facilita a leitura entre camadas.
+O aplicativo foi projetado para funcionar integralmente sem conexão com a internet e sem dependência de back-end remoto. Todos os lançamentos e orçamentos mensais são armazenados localmente no dispositivo via `expo-sqlite`, garantindo acesso imediato, recálculo determinístico e privacidade total dos dados financeiros.
 
 ---
 
-## Stack e Versões Utilizadas
+## Funcionalidades Implementadas
 
-| Tecnologia / Biblioteca | Versão | Papel no Projeto |
+### Requisitos Obrigatórios do MVP (RF01 a RF07)
+- [x] **RF01 — Cadastro:** Registro de despesas com descrição obrigatória, valor numérico estritamente `> 0`, data e categoria tipada.
+- [x] **RF02 — Listagem:** Exibição clara de descrição, valor, data e categoria em cards horizontais legíveis, ordenados cronologicamente (mais recentes primeiro).
+- [x] **RF03 — Resumo Mensal:** Cálculo exato e exibição do total gasto no mês selecionado com base na data de cada lançamento.
+- [x] **RF04 — Filtros por Período:** Alternância entre meses e anos (`< Mês Ano >` + retorno rápido *"Atual"*), atualizando listagem, orçamento e resumo imediatamente.
+- [x] **RF05 — Exclusão:** Remoção de despesas com diálogo de confirmação e recálculo instantâneo do total mensal e do gráfico.
+- [x] **RF06 — Persistência e Navegação:** Persistência local em SQLite após fechar/reabrir o app sem internet, com navegação funcional via Expo Router entre as abas **Início**, **Análise** e a tela de **Nova/Editar Despesa**.
+- [x] **RF07 — Validação:** Bloqueio de valores inválidos (zero, negativos, vazios ou não numéricos), datas inexistentes (ex.: `31/02`) e campos obrigatórios ausentes, com feedback visual inline em cada campo.
+
+### Diferenciais e Evoluções Implementadas
+- [x] **Edição de Despesa:** Toque em qualquer lançamento para abrir o formulário pré-preenchido, editar qualquer campo e atualizar imediatamente no SQLite.
+- [x] **Gráfico Circular Interativo (Donut Segmentado):** Anel em `react-native-svg` exibindo apenas categorias com gasto `> R$ 0,00` no mês; tocar em qualquer segmento ou ícone exibe a barra de detalhe (`Categoria • R$ X,XX (Y%)`).
+- [x] **Orçamento Mensal Opcional com Alertas:** Limite configurável por mês (`YYYY-MM`) persistido em SQLite, com barra de progresso em 3 níveis: **Verde Sálvia** (≤ 75%), **Mostarda** (76%–99% com aviso) e **Terracota** (≥ 100% com alerta de limite excedido).
+- [x] **Filtro por Categoria na Tela Inicial:** Chips horizontais (*Todas* + categorias) filtrando a listagem sem distorcer o resumo mensal.
+- [x] **Barra de Navegação Inferior Flutuante:** Navegação limpa em pílula escura (`Início` • `+` • `Análise`) com data contextual automática ao adicionar a partir de outro mês.
+- [x] **Tela de Análise por Período:** Filtros de período (*Últimos 3 meses*, *Últimos 6 meses*, *Este ano*, *Tudo*) combináveis com categoria, card com **Total do Período**, **Média Mensal**, gráfico de barras de evolução mensal e ranking decrescente por categoria.
+- [x] **Exportação CSV Offline:** Geração de arquivos `.csv` com cabeçalho em português, escape RFC 4180 e BOM UTF-8 (compatível com Excel/Sheets), disponível tanto por mês na Tela Inicial (`despesas-YYYY-MM.csv`) quanto por período/categoria na Tela de Análise, usando o compartilhamento nativo do aparelho.
+- [x] **Responsividade (Celulares Compactos e Tablets):** Adaptação via `useWindowDimensions()`, largura máxima centralizada (`maxWidth: 680`) em telas largas (`>= 600px`), escalonamento proporcional dos gráficos e `"supportsTablet": true` no iOS.
+- [x] **Testes Unitários Automatizados:** 13 suítes e 67 testes cobrindo regras de domínio, cálculos, validações, CSV, migrações e repositórios SQLite.
+
+---
+
+## Tecnologias e Dependências
+
+| Tecnologia / Biblioteca | Versão (`package.json`) | Papel no Projeto |
 | :--- | :--- | :--- |
 | **Expo SDK** | `~58.0.26` | Plataforma e toolchain React Native |
-| **React Native** | `0.88.1` | Framework mobile cross-platform |
+| **React Native** | `0.88.1` | Framework mobile multiplataforma |
 | **React** | `19.3.0` | Biblioteca de interface |
 | **TypeScript** | `~6.0.3` | Tipagem estática (`strict: true`) |
 | **Expo Router** | `~58.0.32` | Navegação baseada em arquivos (`app/`) |
 | **expo-sqlite** | `~58.0.18` | Banco de dados relacional local offline |
-| **@expo/vector-icons** | `^15.0.2` | Ícones geométricos nativos (Feather) compatíveis com Expo Go |
-| **react-native-svg** | `15.16.0` | Gráfico circular interativo (donut segmentado) compatível com Expo Go |
-| **expo-file-system** | `~58.0.14` | Geração local de arquivo CSV offline (API `File`/`Paths`) |
-| **expo-sharing** | `~58.0.23` | Compartilhamento nativo do relatório CSV no dispositivo |
+| **react-native-svg** | `15.16.0` | Gráfico circular interativo (donut segmentado) |
+| **expo-file-system** | `~58.0.14` | Geração local de arquivo CSV offline (`File` / `Paths`) |
+| **expo-sharing** | `~58.0.23` | Gaveta nativa de compartilhamento para exportação CSV |
+| **expo-font** | `~58.0.12` | Carregamento de fontes customizadas compatível com Expo Go |
+| **@expo-google-fonts/space-grotesk** | `^0.4.1` | Tipografia geométrica unificada (`Regular`, `Medium`, `Bold`) |
+| **@expo/vector-icons** | `^15.0.2` | Ícones geométricos nativos (Feather) |
 | **Jest** | `~30.5.2` | Runner de testes unitários |
-| **jest-expo** | `~58.0.15` | Preset oficial de testes para Expo |
-| **eslint-config-expo** | `~58.0.4` | Lint oficial do ecossistema Expo (Flat Config) |
+| **jest-expo** | `~58.0.15` | Preset oficial de testes do ecossistema Expo |
+| **eslint-config-expo** | `~58.0.4` | Lint oficial do Expo (Flat Config) |
 
 ---
 
-## Como Instalar, Rodar e Testar
+## Arquitetura e Decisões Técnicas
+
+O projeto adota uma **Arquitetura Limpa Pragmática** com separação estrita em três camadas, garantindo que nenhuma regra de negócio ou SQL resida em componentes visuais:
+
+```mermaid
+flowchart TD
+    subgraph Presentation["Apresentação (app/ + src/presentation/)"]
+        Screens["HomeScreen, AnalyticsScreen, NewExpenseScreen"]
+        Components["FloatingTabBar, MonthlySummaryCard, BudgetProgressSection, ExpenseItem, ..."]
+        Context["ExpensesContext + useExpenses + useResponsiveLayout"]
+    end
+
+    subgraph Domain["Domínio (src/domain/ — TypeScript Puro)"]
+        Entities["Expense, Category, Budget"]
+        Services["currency, expenseValidation, expenseCalculations, budgetService, analyticsService, csvExport"]
+        Ports["IExpenseRepository, IBudgetRepository"]
+    end
+
+    subgraph Data["Dados (src/data/ — Offline-First)"]
+        Repos["SqliteExpenseRepository, SqliteBudgetRepository"]
+        DB["SQLite Client + Migrations v1/v2 (PRAGMA user_version)"]
+        Export["csvShareService (expo-file-system + expo-sharing)"]
+    end
+
+    Screens --> Components
+    Screens --> Context
+    Screens -. valida entrada .-> Services
+    Screens --> Export
+    Context --> Services
+    Context --> Ports
+    Repos -. implementa .-> Ports
+    Repos --> DB
+    DB --> SQLite[(expenses.db)]
+```
+
+### Organização de Pastas
+- **`app/`**: rotas finas do Expo Router (`_layout.tsx`, `(tabs)/_layout.tsx`, `(tabs)/index.tsx`, `(tabs)/analytics.tsx`, `new-expense.tsx`).
+- **`src/domain/`**: TypeScript puro (zero imports de React Native/Expo) contendo entidades, portas de repositório, parser/formatador monetário, datas timezone-safe, validação, cálculos mensais, regras de orçamento, agregação analítica e formatação CSV.
+- **`src/data/`**: cliente singleton `openDatabaseAsync('expenses.db')`, migrações versionadas (`PRAGMA user_version` v1 → v2 criando `expenses` e `monthly_budgets`), mapeador `ExpenseRow ↔ Expense`, repositórios SQLite parametrizados e adaptador de compartilhamento CSV.
+- **`src/presentation/`**: tema centralizado (`theme.ts`), contexto reativo (`ExpensesContext`), hooks (`useExpenses`, `useResponsiveLayout`), componentes modulares e telas.
+- **`__tests__/`**: suíte Jest espelhando `domain/` e `data/`.
+
+### Justificativa das Principais Decisões
+1. **Valores monetários em centavos inteiros (`INTEGER`):** elimina erros de ponto flutuante (`0.1 + 0.2 !== 0.3`) em somas, médias e percentuais.
+2. **Datas em ISO local (`YYYY-MM-DD`):** evita deslocamento de fuso horário que moveria despesas de início/fim de mês para o mês errado.
+3. **Migrações versionadas com `PRAGMA user_version`:** evolução segura e idempotente do schema offline (`v1`: tabela `expenses` + índice `idx_expenses_date`; `v2`: tabela `monthly_budgets`), com constraints `CHECK (... > 0)` como defesa em profundidade.
+4. **Injeção de `SQLiteExecutor`:** os repositórios recebem uma interface enxuta satisfeita estruturalmente pelo `SQLiteDatabase`, permitindo testes unitários rápidos e confiáveis sem acoplamento nativo.
+5. **Tipografia unificada (`Space Grotesk`) + `tabular-nums`:** mantém identidade geométrica coerente em toda a interface com alinhamento numérico vertical perfeito em valores, datas e percentuais.
+
+---
+
+## Como Executar e Testar
 
 ### Pré-requisitos
-- Node.js 20+ (testado com Node `v24.18.0`) e npm.
-- Aplicativo **Expo Go** no dispositivo físico ou emulador Android/iOS.
+- **Node.js 20+** e **npm** (testado com Node `v24.18.0` e npm `11.16.0`).
+- Aplicativo **Expo Go** instalado no dispositivo Android/iOS (ou emulador configurado).
 
-### 1. Instalar dependências
+### 1. Clonar e instalar dependências
 ```bash
+git clone <URL_DO_REPOSITORIO>
+cd loadingps
 npm install
 ```
 
-### 2. Executar o aplicativo
+### 2. Rodar o aplicativo no Expo Go
 ```bash
-npm start
+npx expo start
 ```
-*(Ou diretamente com `npm run android`, `npm run ios` ou `npm run web`.)*
+*(Caso o firewall da rede local bloqueie a conexão com o celular, utilize `npx expo start --tunnel`.)*
 
-### 3. Verificações técnicas (TypeScript, Lint e Testes)
+### 3. Executar testes, checagem de tipos e lint
 ```bash
-npm run typecheck
-npm run lint
+# Testes unitários (Jest)
 npm test
+
+# Checagem estática de tipos (TypeScript strict)
+npx tsc --noEmit
+
+# Linter oficial do Expo
+npm run lint
 ```
 
 ---
 
-## Checklist de Requisitos do MVP
+## Capturas de Tela
 
-- [ ] **RF01 — Cadastro:** Registrar despesa com descrição obrigatória, valor numérico estritamente > 0, data e categoria.
-- [ ] **RF02 — Listagem:** Exibir despesas com descrição, valor, data e categoria ordenadas cronologicamente.
-- [ ] **RF03 — Resumo Mensal:** Calcular e exibir o total gasto no mês selecionado com base na data de cada lançamento.
-- [ ] **RF04 — Filtros:** Alternar entre meses/anos atualizando listagem e resumo imediatamente.
-- [ ] **RF05 — Exclusão:** Excluir despesa com confirmação e recálculo imediato do total mensal.
-- [ ] **RF06 — Persistência e Navegação:** Persistência 100% offline em SQLite com navegação funcional entre telas.
-- [ ] **RF07 — Validação:** Bloquear valores inválidos e campos obrigatórios ausentes com feedback visual claro.
+<!-- Substitua os caminhos abaixo pelos 3 prints capturados no dispositivo antes do push final -->
+
+| Tela Inicial (Resumo, Donut e Orçamento) | Nova / Editar Despesa | Tela de Análise por Período |
+| :---: | :---: | :---: |
+| ![Tela Inicial](./docs/screenshots/home.png) | ![Nova Despesa](./docs/screenshots/form.png) | ![Tela de Análise](./docs/screenshots/analytics.png) |
 
 ---
 
-## Transparência sobre o Uso de IA
+## Transparência sobre o Uso de Inteligência Artificial
 
-Este projeto foi desenvolvido com apoio de inteligência artificial como ferramenta de engenharia assistida — atuando na revisão arquitetural, planejamento em fases incrementais, geração guiada de código, criação de testes automatizados e documentação técnica, com validação contínua em terminal (checagem de tipos, lint e execução de testes) a cada entrega.
+Este projeto foi desenvolvido com o apoio de **inteligência artificial como ferramenta de engenharia assistida** nas etapas de planejamento arquitetural, estruturação em fases incrementais, geração guiada de código, criação de testes unitários em TDD, revisão de responsividade e redação de documentação técnica.
+
+Todas as decisões de produto, identidade visual, revisões de código, testes práticos no dispositivo real via **Expo Go**, validações automatizadas (`npx tsc --noEmit`, `npm run lint` e `npm test`) e aprovações de cada commit incremental foram conduzidas e validadas manualmente ao longo do desenvolvimento.
