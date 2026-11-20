@@ -8,7 +8,13 @@ Aplicativo mobile desenvolvido em **React Native + Expo** para controle de despe
 
 O projeto segue uma **Arquitetura Limpa Pragmática**, separando claramente as responsabilidades em três camadas independentes:
 
-- **Domínio (`src/domain/`):** entidades, contratos de repositório (`IExpenseRepository`), regras de validação, cálculo mensal em centavos inteiros e utilitários de data timezone-safe (`YYYY-MM-DD`). Zero dependências de React Native ou Expo.
+- **Domínio (`src/domain/`):** implementado em TypeScript puro (zero dependências de React Native/Expo):
+  - `entities/Expense.ts` e `entities/Category.ts`: modelos de despesa, período mensal e catálogo tipado de categorias (`EXPENSE_CATEGORIES`).
+  - `repositories/ExpenseRepository.ts`: contrato `IExpenseRepository` para inversão de dependência.
+  - `services/currency.ts`: conversão segura PT-BR/EN → centavos inteiros (`parseCurrencyToCents`) e formatação BRL (`formatCentsToBRL`).
+  - `services/expenseValidation.ts`: validação completa de descrição, valor estritamente positivo, data real e categoria (`validateExpenseInput`).
+  - `services/expenseCalculations.ts`: soma mensal exata em centavos, filtro por período, ordenação cronológica imutável e resumo mensal (`calculateMonthlySummary`).
+  - `utils/dateUtils.ts` e `utils/idGenerator.ts`: datas timezone-safe (`YYYY-MM-DD`), navegação mês/ano com virada de ano e geração offline de IDs.
 - **Dados (`src/data/`):** cliente `expo-sqlite`, migrações versionadas via `PRAGMA user_version`, mapeadores e implementação concreta do repositório (`SqliteExpenseRepository`).
 - **Apresentação (`app/` e `src/presentation/`):** rotas finas no Expo Router (`app/`), gerenciamento de estado com Context API e componentes/telas desacoplados das regras de negócio.
 
