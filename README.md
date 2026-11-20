@@ -63,4 +63,8 @@ npx tsc --noEmit
 
 ## Uso de Inteligência Artificial
 
-Este projeto contou com apoio de inteligência artificial como ferramenta de suporte no planejamento arquitetural, escrita guiada de código e criação de testes unitários. Todas as decisões técnicas, revisões, validações em terminal (`tsc`, `lint` e `jest`) e testes práticos no dispositivo via Expo Go foram revisados e aprovados manualmente a cada entrega.
+Este projeto contou com o apoio de inteligência artificial como acelerador de engenharia no planejamento arquitetural, escrita guiada de código e criação de testes unitários, conduzido em um fluxo estruturado de entregas incrementais com controle total sobre o produto:
+
+- **Direção técnica e visual:** definição da arquitetura em camadas (`domain`, `data`, `presentation`), modelagem offline em SQLite e curadoria de UI/UX com referências próprias.
+- **Senso crítico em testes reais:** validação contínua no dispositivo via Expo Go, resultando em ajustes e descartes conscientes a cada entrega — como a remoção de gestos que prejudicavam a fluidez, correção de truncamento nos cards, unificação tipográfica e data contextual.
+- **Revisão e qualidade:** todas as entregas passaram por revisão manual de código antes de cada commit, além de validações em terminal (`tsc --noEmit`, `lint`) e testes unitários automatizados cobrindo as regras de negócio.
