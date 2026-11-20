@@ -36,6 +36,12 @@ const SELECT_EXPENSES_BY_MONTH_SQL = `
   ORDER BY date DESC, created_at DESC, id DESC
 `;
 
+const SELECT_ALL_EXPENSES_SQL = `
+  SELECT id, description, amount_cents, date, category, created_at
+  FROM expenses
+  ORDER BY date DESC, created_at DESC, id DESC
+`;
+
 const DELETE_EXPENSE_BY_ID_SQL = `
   DELETE FROM expenses
   WHERE id = ?
@@ -135,6 +141,14 @@ export class SqliteExpenseRepository implements IExpenseRepository {
     const rows = await this.db.getAllAsync<ExpenseRow>(
       SELECT_EXPENSES_BY_MONTH_SQL,
       [startDate, endDate]
+    );
+    return rows.map(mapRowToExpense);
+  }
+
+  async findAll(): Promise<Expense[]> {
+    const rows = await this.db.getAllAsync<ExpenseRow>(
+      SELECT_ALL_EXPENSES_SQL,
+      []
     );
     return rows.map(mapRowToExpense);
   }

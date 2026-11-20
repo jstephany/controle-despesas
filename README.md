@@ -24,8 +24,8 @@ O projeto segue uma **Arquitetura Limpa Pragmática**, separando claramente as r
 - **Apresentação (`app/` e `src/presentation/`):** implementada com identidade visual **"Eco-Fintech Editorial"** (canvas quente `#F6F3EB`, contraste em carvão `#161615`, categorias em tons orgânicos/pastéis e `tabular-nums` em todos os valores e datas):
   - `theme/theme.ts`: tokens centralizados de cores, tipografia, espaçamentos, raios e paleta visual por categoria.
   - `context/ExpensesContext.tsx` e `hooks/useExpenses.ts`: estado reativo do período ativo, listagem, resumo mensal, gráfico por categoria e ações offline (`addExpense`, `deleteExpense`, navegação mês/ano).
-  - `screens/HomeScreen.tsx` e `screens/NewExpenseScreen.tsx`: telas desacopladas de SQL e regras de validação, conectadas às rotas finas `app/index.tsx`, `app/new-expense.tsx` e `app/_layout.tsx`.
-  - `components/`: `MonthSelector`, `MonthlySummaryCard` (gráfico circular/donut interativo com `react-native-svg` e animação suave na troca de mês), `BudgetProgressSection` e `BudgetModal` (orçamento mensal opcional com alertas em 3 níveis), `CategoryFilterBar`, `ExpenseItem` (toque para editar + exclusão), `EmptyState`, `CategoryPicker` e `FormFieldError`.
+  - `screens/HomeScreen.tsx`, `screens/AnalyticsScreen.tsx` e `screens/NewExpenseScreen.tsx`: telas desacopladas de SQL e regras de validação, conectadas às rotas finas `app/(tabs)/index.tsx`, `app/(tabs)/analytics.tsx`, `app/(tabs)/_layout.tsx`, `app/new-expense.tsx` e `app/_layout.tsx`.
+  - `components/`: `FloatingTabBar` (barra inferior flutuante em `#161615` com botão central `+`), `MonthSelector`, `MonthlySummaryCard` (gráfico circular/donut interativo com `react-native-svg` e animação suave na troca de mês), `BudgetProgressSection` e `BudgetModal` (orçamento mensal opcional com alertas em 3 níveis), `CategoryFilterBar`, `ExpenseItem` (toque para editar + exclusão), `EmptyState`, `CategoryPicker` e `FormFieldError`.
 
 ### Justificativa Técnica
 - **Valores monetários em centavos (`INTEGER`):** evita erros de arredondamento de ponto flutuante em somas mensais.
@@ -47,6 +47,8 @@ O projeto segue uma **Arquitetura Limpa Pragmática**, separando claramente as r
 | **expo-sqlite** | `~58.0.18` | Banco de dados relacional local offline |
 | **@expo/vector-icons** | `^15.0.2` | Ícones geométricos nativos (Feather) compatíveis com Expo Go |
 | **react-native-svg** | `15.16.0` | Gráfico circular interativo (donut segmentado) compatível com Expo Go |
+| **expo-file-system** | `~58.0.14` | Geração local de arquivo CSV offline (API `File`/`Paths`) |
+| **expo-sharing** | `~58.0.23` | Compartilhamento nativo do relatório CSV no dispositivo |
 | **Jest** | `~30.5.2` | Runner de testes unitários |
 | **jest-expo** | `~58.0.15` | Preset oficial de testes para Expo |
 | **eslint-config-expo** | `~58.0.4` | Lint oficial do ecossistema Expo (Flat Config) |

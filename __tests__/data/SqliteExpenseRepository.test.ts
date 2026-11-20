@@ -68,18 +68,20 @@ function createInMemorySqliteStub() {
     async getAllAsync<T>(sql: string, params: SQLiteBindParams): Promise<T[]> {
       queryCalls.push({ sql, params });
       const values = Array.isArray(params) ? params : [];
-      const startDate = String(values[0]);
-      const endDate = String(values[1]);
 
-      const filtered = rows
-        .filter((r) => r.date >= startDate && r.date < endDate)
-        .sort((a, b) => {
-          if (a.date !== b.date) return b.date.localeCompare(a.date);
-          if (a.created_at !== b.created_at) return b.created_at.localeCompare(a.created_at);
-          return b.id.localeCompare(a.id);
-        });
+      const base = sql.includes('WHERE date >= ? AND date < ?')
+        ? rows.filter(
+            (r) => r.date >= String(values[0]) && r.date < String(values[1])
+          )
+        : [...rows];
 
-      return filtered as T[];
+      const sorted = base.sort((a, b) => {
+        if (a.date !== b.date) return b.date.localeCompare(a.date);
+        if (a.created_at !== b.created_at) return b.created_at.localeCompare(a.created_at);
+        return b.id.localeCompare(a.id);
+      });
+
+      return sorted as T[];
     },
   };
 
@@ -323,5 +325,36 @@ describe('SqliteExpenseRepository', () => {
         category: 'alimentacao',
       })
     ).rejects.toThrow();
+  });
+
+  it('lista todas as despesas de múltiplos meses ordenadas cronologicamente via findAll', async () => {
+    const { db } = createInMemorySqliteStub();
+    const repository = new SqliteExpenseRepository(db);
+
+    await repository.create({
+      description: 'Despesa Setembro',
+      amountCents: 5000,
+      date: '2026-09-10',
+      category: 'outros',
+    });
+    await repository.create({
+      description: 'Despesa Novembro',
+      amountCents: 9000,
+      date: '2026-11-20',
+      category: 'alimentacao',
+    });
+    await repository.create({
+      description: 'Despesa Outubro',
+      amountCents: 7000,
+      date: '2026-10-15',
+      category: 'transporte',
+    });
+
+    const all = await repository.findAll();
+    expect(all.map((item) => item.description)).toEqual([
+      'Despesa Novembro',
+      'Despesa Outubro',
+      'Despesa Setembro',
+    ]);
   });
 });

@@ -337,23 +337,6 @@ export function HomeScreen() {
           showsVerticalScrollIndicator={false}
         />
 
-        {expenses.length > 0 ? (
-          <View style={styles.fabContainer} pointerEvents="box-none">
-            <Pressable
-              onPress={handleOpenNewExpense}
-              accessibilityRole="button"
-              accessibilityLabel="Registrar nova despesa"
-              style={({ pressed }) => [
-                styles.fabButton,
-                pressed && styles.fabButtonPressed,
-              ]}
-            >
-              <Feather name="plus" size={18} color={theme.colors.textOnInk} />
-              <Text style={styles.fabLabel}>Nova despesa</Text>
-            </Pressable>
-          </View>
-        ) : null}
-
         <BudgetModal
           visible={isBudgetModalVisible}
           monthLabel={monthLabel}
@@ -422,7 +405,7 @@ const styles = StyleSheet.create({
   },
   listContent: {
     paddingHorizontal: theme.spacing.xl,
-    paddingBottom: 108,
+    paddingBottom: 124,
   },
   listHeader: {
     marginBottom: theme.spacing.md,
@@ -517,35 +500,5 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: theme.colors.danger,
     textDecorationLine: 'underline',
-  },
-  fabContainer: {
-    position: 'absolute',
-    left: 0,
-    right: 0,
-    bottom: 24,
-    alignItems: 'center',
-  },
-  fabButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    backgroundColor: theme.colors.ink,
-    borderRadius: theme.radius.pill,
-    paddingHorizontal: 22,
-    paddingVertical: 14,
-    shadowColor: '#161615',
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.18,
-    shadowRadius: 12,
-    elevation: 5,
-  },
-  fabButtonPressed: {
-    opacity: 0.88,
-    transform: [{ scale: 0.97 }],
-  },
-  fabLabel: {
-    ...theme.typography.body,
-    fontWeight: '700',
-    color: theme.colors.textOnInk,
   },
 });

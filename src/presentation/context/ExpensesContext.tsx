@@ -37,6 +37,7 @@ import {
 export interface ExpensesContextValue {
   readonly selectedPeriod: MonthPeriod;
   readonly expenses: Expense[];
+  readonly allExpenses: Expense[];
   readonly monthlyTotalCents: number;
   readonly categoryBreakdown: CategoryBreakdownItem[];
   readonly monthlyBudget: MonthlyBudget | null;
@@ -85,6 +86,7 @@ export function ExpensesProvider({
     () => initialPeriod ?? getCurrentMonthPeriod()
   );
   const [expenses, setExpenses] = useState<Expense[]>([]);
+  const [allExpenses, setAllExpenses] = useState<Expense[]>([]);
   const [monthlyBudget, setMonthlyBudget] = useState<MonthlyBudget | null>(null);
   const [loadedPeriodKey, setLoadedPeriodKey] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -128,6 +130,27 @@ export function ExpensesProvider({
       cancelled = true;
     };
   }, [injectedRepository]);
+
+  useEffect(() => {
+    if (!activeRepository) {
+      return;
+    }
+
+    let cancelled = false;
+    activeRepository
+      .findAll()
+      .then((all) => {
+        if (cancelled) return;
+        setAllExpenses(sortExpensesChronologically(all));
+      })
+      .catch(() => {
+        // Error surface is handled by the period load effect
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [activeRepository]);
 
   useEffect(() => {
     if (!activeRepository) {
@@ -179,7 +202,9 @@ export function ExpensesProvider({
 
   const getExpenseById = useCallback(
     async (id: string): Promise<Expense | null> => {
-      const inMemory = expenses.find((item) => item.id === id);
+      const inMemory =
+        expenses.find((item) => item.id === id) ??
+        allExpenses.find((item) => item.id === id);
       if (inMemory) {
         return inMemory;
       }
@@ -188,7 +213,7 @@ export function ExpensesProvider({
       }
       return activeRepository.findById(id);
     },
-    [expenses, activeRepository]
+    [expenses, allExpenses, activeRepository]
   );
 
   const addExpense = useCallback(
@@ -198,8 +223,9 @@ export function ExpensesProvider({
       }
 
       const created = await activeRepository.create(input);
-      const expensePeriod = getMonthPeriodFromIsoDate(created.date);
+      setAllExpenses((prev) => sortExpensesChronologically([created, ...prev]));
 
+      const expensePeriod = getMonthPeriodFromIsoDate(created.date);
       if (
         expensePeriod &&
         (expensePeriod.year !== selectedPeriod.year ||
@@ -222,8 +248,13 @@ export function ExpensesProvider({
       }
 
       const updated = await activeRepository.update(input);
-      const expensePeriod = getMonthPeriodFromIsoDate(updated.date);
+      setAllExpenses((prev) =>
+        sortExpensesChronologically(
+          prev.map((item) => (item.id === updated.id ? updated : item))
+        )
+      );
 
+      const expensePeriod = getMonthPeriodFromIsoDate(updated.date);
       if (
         expensePeriod &&
         (expensePeriod.year !== selectedPeriod.year ||
@@ -252,6 +283,7 @@ export function ExpensesProvider({
 
       await activeRepository.deleteById(id);
       setExpenses((prev) => prev.filter((item) => item.id !== id));
+      setAllExpenses((prev) => prev.filter((item) => item.id !== id));
     },
     [activeRepository]
   );
@@ -288,14 +320,16 @@ export function ExpensesProvider({
     const requestId = ++loadRequestIdRef.current;
     const periodKey = getPeriodKey(selectedPeriod);
     try {
-      const [expenseList, budget] = await Promise.all([
+      const [expenseList, all, budget] = await Promise.all([
         activeRepository.findByMonth(selectedPeriod),
+        activeRepository.findAll(),
         activeBudgetRepository
           ? activeBudgetRepository.getByMonth(selectedPeriod)
           : Promise.resolve(null),
       ]);
       if (requestId === loadRequestIdRef.current) {
         setExpenses(sortExpensesChronologically(expenseList));
+        setAllExpenses(sortExpensesChronologically(all));
         setMonthlyBudget(budget);
         setError(null);
         setLoadedPeriodKey(periodKey);
@@ -334,6 +368,7 @@ export function ExpensesProvider({
     () => ({
       selectedPeriod,
       expenses,
+      allExpenses,
       monthlyTotalCents,
       categoryBreakdown,
       monthlyBudget,
@@ -356,6 +391,7 @@ export function ExpensesProvider({
     [
       selectedPeriod,
       expenses,
+      allExpenses,
       monthlyTotalCents,
       categoryBreakdown,
       monthlyBudget,

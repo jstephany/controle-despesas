@@ -17,7 +17,7 @@ export default function RootLayout() {
             animation: 'slide_from_right',
           }}
         >
-          <Stack.Screen name="index" />
+          <Stack.Screen name="(tabs)" />
           <Stack.Screen name="new-expense" />
         </Stack>
       </ExpensesProvider>

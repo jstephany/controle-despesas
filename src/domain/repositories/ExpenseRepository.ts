@@ -10,5 +10,6 @@ export interface IExpenseRepository {
   update(input: UpdateExpenseInput): Promise<Expense>;
   findById(id: string): Promise<Expense | null>;
   findByMonth(period: MonthPeriod): Promise<Expense[]>;
+  findAll(): Promise<Expense[]>;
   deleteById(id: string): Promise<void>;
 }
