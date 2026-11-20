@@ -49,6 +49,10 @@ Aplicativo mobile de controle de despesas pessoais desenvolvido com **React Nati
 
 ## Como Executar e Testar
 
+### Download direto (Android)
+
+Para testar o aplicativo diretamente em um dispositivo Android sem configurar o ambiente, baixe o APK na página de [Releases](https://github.com/jstephany/controle-despesas/releases/latest).
+
 Pré-requisitos: **Node.js 20+** e o app **Expo Go** no celular (ou emulador Android/iOS).
 
 ```bash
