@@ -1,5 +1,6 @@
 import type { Expense } from '@/domain/entities/Expense';
 import {
+  calculateCategoryBreakdown,
   calculateMonthlySummary,
   calculateMonthlyTotal,
   filterExpensesByMonth,
@@ -96,6 +97,36 @@ describe('expenseCalculations', () => {
       expect(summary.count).toBe(3);
       expect(summary.totalCents).toBe(3590 + 2410 + 19999);
       expect(summary.expenses.map((e) => e.id)).toEqual(['exp_3', 'exp_2', 'exp_1']);
+    });
+  });
+
+  describe('calculateCategoryBreakdown', () => {
+    it('agrupa gastos por categoria mantendo todas as categorias com percentuais e razão sobre o máximo', () => {
+      const novExpenses = filterExpensesByMonth(sampleExpenses, { year: 2026, month: 11 });
+      const breakdown = calculateCategoryBreakdown(novExpenses);
+
+      expect(breakdown).toHaveLength(7);
+
+      const food = breakdown.find((item) => item.category === 'alimentacao');
+      const transport = breakdown.find((item) => item.category === 'transporte');
+      const health = breakdown.find((item) => item.category === 'saude');
+
+      expect(food?.totalCents).toBe(3590 + 19999);
+      expect(food?.ratioToMax).toBe(1);
+      expect(food?.percentage).toBe(Math.round(((3590 + 19999) / (3590 + 2410 + 19999)) * 100));
+
+      expect(transport?.totalCents).toBe(2410);
+      expect(transport?.ratioToMax).toBeCloseTo(2410 / (3590 + 19999), 4);
+
+      expect(health?.totalCents).toBe(0);
+      expect(health?.percentage).toBe(0);
+      expect(health?.ratioToMax).toBe(0);
+    });
+
+    it('retorna zeros para todas as categorias quando a lista está vazia', () => {
+      const breakdown = calculateCategoryBreakdown([]);
+      expect(breakdown).toHaveLength(7);
+      expect(breakdown.every((item) => item.totalCents === 0 && item.ratioToMax === 0)).toBe(true);
     });
   });
 });

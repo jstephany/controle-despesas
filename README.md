@@ -21,7 +21,11 @@ O projeto segue uma **Arquitetura Limpa Pragmática**, separando claramente as r
   - `database/client.ts`: abertura singleton assíncrona (`openDatabaseAsync('expenses.db')`) com execução automática de migrações e recuperação em caso de erro.
   - `mappers/expenseMapper.ts`: conversão tipada `ExpenseRow` (`snake_case`) ↔ `Expense` (`camelCase`) com fallback seguro de categoria.
   - `repositories/SqliteExpenseRepository.ts`: implementação concreta de `IExpenseRepository` com queries parametrizadas (`create`, `findByMonth` por intervalo `[startDate, endDate)` e `deleteById`) e checagens defensivas de invariantes.
-- **Apresentação (`app/` e `src/presentation/`):** rotas finas no Expo Router (`app/`), gerenciamento de estado com Context API e componentes/telas desacoplados das regras de negócio.
+- **Apresentação (`app/` e `src/presentation/`):** implementada com identidade visual **"Eco-Fintech Editorial"** (canvas quente `#F6F3EB`, contraste em carvão `#161615`, categorias em tons orgânicos/pastéis e `tabular-nums` em todos os valores e datas):
+  - `theme/theme.ts`: tokens centralizados de cores, tipografia, espaçamentos, raios e paleta visual por categoria.
+  - `context/ExpensesContext.tsx` e `hooks/useExpenses.ts`: estado reativo do período ativo, listagem, resumo mensal, gráfico por categoria e ações offline (`addExpense`, `deleteExpense`, navegação mês/ano).
+  - `screens/HomeScreen.tsx` e `screens/NewExpenseScreen.tsx`: telas desacopladas de SQL e regras de validação, conectadas às rotas finas `app/index.tsx`, `app/new-expense.tsx` e `app/_layout.tsx`.
+  - `components/`: `MonthSelector`, `MonthlySummaryCard` (com mini gráfico de barras por categoria), `ExpenseItem`, `EmptyState`, `CategoryPicker` e `FormFieldError`.
 
 ### Justificativa Técnica
 - **Valores monetários em centavos (`INTEGER`):** evita erros de arredondamento de ponto flutuante em somas mensais.
@@ -41,6 +45,7 @@ O projeto segue uma **Arquitetura Limpa Pragmática**, separando claramente as r
 | **TypeScript** | `~6.0.3` | Tipagem estática (`strict: true`) |
 | **Expo Router** | `~58.0.32` | Navegação baseada em arquivos (`app/`) |
 | **expo-sqlite** | `~58.0.18` | Banco de dados relacional local offline |
+| **@expo/vector-icons** | `^15.0.2` | Ícones geométricos nativos (Feather) compatíveis com Expo Go |
 | **Jest** | `~30.5.2` | Runner de testes unitários |
 | **jest-expo** | `~58.0.15` | Preset oficial de testes para Expo |
 | **eslint-config-expo** | `~58.0.4` | Lint oficial do ecossistema Expo (Flat Config) |
