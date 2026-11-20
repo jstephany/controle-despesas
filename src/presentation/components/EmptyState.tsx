@@ -62,7 +62,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   subtitle: {
-    ...theme.typography.caption,
+    ...theme.typography.captionRegular,
     color: theme.colors.textSecondary,
     textAlign: 'center',
     marginTop: 6,
@@ -74,7 +74,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 8,
     backgroundColor: theme.colors.ink,
-    borderRadius: theme.radius.pill,
+    borderRadius: theme.radius.md,
     paddingHorizontal: 20,
     paddingVertical: 13,
     marginTop: theme.spacing.xl,
@@ -84,8 +84,7 @@ const styles = StyleSheet.create({
     transform: [{ scale: 0.98 }],
   },
   ctaLabel: {
-    ...theme.typography.body,
-    fontWeight: '700',
+    ...theme.typography.bodyBold,
     color: theme.colors.textOnInk,
   },
 });

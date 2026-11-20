@@ -1,6 +1,7 @@
 import type { Expense } from '@/domain/entities/Expense';
 import {
   buildCsvFileName,
+  buildMonthlyCsvFileName,
   formatExpensesToCsv,
 } from '@/domain/services/csvExport';
 
@@ -46,6 +47,15 @@ describe('csvExport', () => {
     );
     expect(buildCsvFileName('this_year', 'alimentacao', refDate)).toBe(
       'despesas-este-ano-alimentacao-2026-11-20.csv'
+    );
+  });
+
+  it('gera nome de arquivo mensal no formato despesas-YYYY-MM.csv', () => {
+    expect(buildMonthlyCsvFileName({ year: 2026, month: 3 })).toBe(
+      'despesas-2026-03.csv'
+    );
+    expect(buildMonthlyCsvFileName({ year: 2026, month: 11 })).toBe(
+      'despesas-2026-11.csv'
     );
   });
 });

@@ -3,6 +3,7 @@ import { router } from 'expo-router';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { useExpenses } from '../hooks/useExpenses';
+import { useResponsiveLayout } from '../hooks/useResponsiveLayout';
 import { theme } from '../theme/theme';
 
 interface TabRoute {
@@ -35,6 +36,7 @@ export function FloatingTabBar({
   emitter,
 }: FloatingTabBarProps) {
   const { selectedPeriod } = useExpenses();
+  const { tabBarMaxWidth, tabBarHorizontalInset } = useResponsiveLayout();
 
   const homeRoute = state.routes.find((route) => route.name === 'index');
   const analyticsRoute = state.routes.find((route) => route.name === 'analytics');
@@ -73,10 +75,17 @@ export function FloatingTabBar({
 
   return (
     <View
-      style={[styles.wrapper, { bottom: bottomOffset }]}
+      style={[
+        styles.wrapper,
+        {
+          bottom: bottomOffset,
+          left: tabBarHorizontalInset,
+          right: tabBarHorizontalInset,
+        },
+      ]}
       pointerEvents="box-none"
     >
-      <View style={styles.pill}>
+      <View style={[styles.pill, { maxWidth: tabBarMaxWidth }]}>
         <Pressable
           onPress={() => handleNavigateTab(homeRoute, isHomeActive)}
           accessibilityRole="tab"
@@ -189,14 +198,15 @@ const styles = StyleSheet.create({
     opacity: 0.75,
   },
   tabLabel: {
-    fontSize: 11,
-    fontWeight: '600',
+    fontFamily: theme.fonts.sansMedium,
+    fontSize: 10.5,
     color: theme.colors.textMutedOnInk,
-    letterSpacing: 0.1,
+    letterSpacing: 0.6,
+    textTransform: 'uppercase',
   },
   tabLabelActive: {
+    fontFamily: theme.fonts.sansBold,
     color: theme.colors.textOnInk,
-    fontWeight: '700',
   },
   activeDot: {
     width: 5,

@@ -16,6 +16,7 @@ import type { MonthlyBudget } from '@/domain/entities/Budget';
 import { validateBudgetInput } from '@/domain/services/budgetService';
 import { formatCentsToInputValue } from '@/domain/services/currency';
 
+import { useResponsiveLayout } from '../hooks/useResponsiveLayout';
 import { theme } from '../theme/theme';
 import { FormFieldError } from './FormFieldError';
 
@@ -43,6 +44,7 @@ function BudgetModalForm({
   onSave,
   onRemove,
 }: BudgetModalFormProps) {
+  const { modalMaxWidth } = useResponsiveLayout();
   const [amount, setAmount] = useState(() =>
     currentBudget ? formatCentsToInputValue(currentBudget.limitCents) : ''
   );
@@ -89,7 +91,7 @@ function BudgetModalForm({
   };
 
   return (
-    <View style={styles.sheet}>
+    <View style={[styles.sheet, { maxWidth: modalMaxWidth }]}>
       <View style={styles.headerRow}>
         <View style={styles.headerText}>
           <Text style={styles.title}>
@@ -223,9 +225,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: theme.spacing.xl,
   },
   sheet: {
+    width: '100%',
+    alignSelf: 'center',
     backgroundColor: theme.colors.surface,
     borderWidth: 1,
-    borderColor: theme.colors.border,
+    borderColor: theme.colors.borderStrong,
     borderRadius: theme.radius.card,
     padding: theme.spacing.xl,
     gap: theme.spacing.lg,
@@ -245,14 +249,13 @@ const styles = StyleSheet.create({
     color: theme.colors.textPrimary,
   },
   subtitle: {
-    ...theme.typography.caption,
-    ...theme.typography.tabularNums,
+    ...theme.typography.numericCaption,
     color: theme.colors.textSecondary,
   },
   closeButton: {
     width: 34,
     height: 34,
-    borderRadius: theme.radius.pill,
+    borderRadius: theme.radius.md,
     backgroundColor: theme.colors.surfaceMuted,
     alignItems: 'center',
     justifyContent: 'center',
@@ -261,8 +264,7 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   label: {
-    ...theme.typography.caption,
-    fontWeight: '700',
+    ...theme.typography.micro,
     color: theme.colors.textPrimary,
   },
   amountRow: {
@@ -270,8 +272,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 10,
     backgroundColor: theme.colors.canvas,
-    borderWidth: 1.25,
-    borderColor: theme.colors.border,
+    borderWidth: 1,
+    borderColor: theme.colors.borderStrong,
     borderRadius: theme.radius.md,
     paddingHorizontal: 16,
     paddingVertical: 12,
@@ -280,12 +282,12 @@ const styles = StyleSheet.create({
     borderColor: theme.colors.danger,
   },
   currencyPrefix: {
-    ...theme.typography.sectionTitle,
+    ...theme.typography.numericTitle,
+    fontSize: 18,
     color: theme.colors.textSecondary,
   },
   amountInput: {
-    ...theme.typography.title,
-    ...theme.typography.tabularNums,
+    ...theme.typography.numericDisplay,
     fontSize: 28,
     lineHeight: 34,
     color: theme.colors.textPrimary,
@@ -294,14 +296,13 @@ const styles = StyleSheet.create({
   },
   primaryButton: {
     backgroundColor: theme.colors.ink,
-    borderRadius: theme.radius.pill,
+    borderRadius: theme.radius.md,
     paddingVertical: 15,
     alignItems: 'center',
     justifyContent: 'center',
   },
   primaryButtonText: {
-    ...theme.typography.body,
-    fontWeight: '700',
+    ...theme.typography.bodyBold,
     color: theme.colors.textOnInk,
   },
   secondaryActions: {
@@ -316,7 +317,6 @@ const styles = StyleSheet.create({
   },
   secondaryButtonText: {
     ...theme.typography.caption,
-    fontWeight: '600',
     color: theme.colors.textSecondary,
   },
   removeButton: {
@@ -324,13 +324,13 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 6,
     backgroundColor: theme.colors.dangerSurface,
-    borderRadius: theme.radius.pill,
+    borderRadius: theme.radius.md,
     paddingHorizontal: 14,
     paddingVertical: 8,
   },
   removeButtonText: {
     ...theme.typography.caption,
-    fontWeight: '700',
+    fontFamily: theme.fonts.sansBold,
     color: theme.colors.danger,
   },
   buttonPressed: {

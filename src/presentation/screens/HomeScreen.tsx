@@ -15,11 +15,16 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { exportCsvFile } from '@/data/export/csvShareService';
 import {
   getCategoryMetadata,
   type ExpenseCategory,
 } from '@/domain/entities/Category';
 import type { Expense } from '@/domain/entities/Expense';
+import {
+  buildMonthlyCsvFileName,
+  formatExpensesToCsv,
+} from '@/domain/services/csvExport';
 import { formatCentsToBRL } from '@/domain/services/currency';
 import { filterExpensesByCategory } from '@/domain/services/expenseCalculations';
 import {
@@ -34,6 +39,7 @@ import { ExpenseItem } from '../components/ExpenseItem';
 import { MonthlySummaryCard } from '../components/MonthlySummaryCard';
 import { MonthSelector } from '../components/MonthSelector';
 import { useExpenses } from '../hooks/useExpenses';
+import { useResponsiveLayout } from '../hooks/useResponsiveLayout';
 import { theme } from '../theme/theme';
 
 const FADE_DURATION_MS = 135;
@@ -58,11 +64,15 @@ export function HomeScreen() {
     refresh,
   } = useExpenses();
 
+  const { maxContentWidth, horizontalPadding, isCompact } =
+    useResponsiveLayout();
+
   const [selectedChartCategory, setSelectedChartCategory] =
     useState<ExpenseCategory | null>(null);
   const [selectedCategoryFilter, setSelectedCategoryFilter] =
     useState<ExpenseCategory | null>(null);
   const [isBudgetModalVisible, setIsBudgetModalVisible] = useState(false);
+  const [isExportingCsv, setIsExportingCsv] = useState(false);
 
   const [opacity] = useState(() => new Animated.Value(1));
 
@@ -161,6 +171,32 @@ export function HomeScreen() {
     await removeMonthlyBudget();
   }, [removeMonthlyBudget]);
 
+  const handleExportMonthlyCsv = useCallback(async () => {
+    if (expenses.length === 0) {
+      Alert.alert(
+        'Sem lançamentos para exportar',
+        'Não há despesas registradas neste mês para gerar o relatório CSV.'
+      );
+      return;
+    }
+
+    setIsExportingCsv(true);
+    try {
+      const csv = formatExpensesToCsv(expenses);
+      const fileName = buildMonthlyCsvFileName(selectedPeriod);
+      await exportCsvFile(fileName, csv);
+    } catch (err) {
+      Alert.alert(
+        'Erro ao exportar CSV',
+        err instanceof Error
+          ? err.message
+          : 'Não foi possível gerar ou compartilhar o relatório deste mês.'
+      );
+    } finally {
+      setIsExportingCsv(false);
+    }
+  }, [expenses, selectedPeriod]);
+
   const monthLabel = formatMonthPeriodLabel(selectedPeriod);
   const filteredCategoryLabel = selectedCategoryFilter
     ? getCategoryMetadata(selectedCategoryFilter).label
@@ -198,14 +234,39 @@ export function HomeScreen() {
       ) : null}
 
       <View style={styles.sectionHeader}>
-        <Text style={styles.sectionTitle}>Lançamentos</Text>
-        <Text style={styles.sectionSubtitle}>
-          {selectedCategoryFilter
-            ? `${visibleExpenses.length} em ${filteredCategoryLabel}`
-            : expenses.length > 0
-              ? 'Toque para editar'
-              : 'Período selecionado'}
-        </Text>
+        <View style={styles.sectionTitleBlock}>
+          <Text style={styles.sectionTitle}>Lançamentos</Text>
+          <Text style={styles.sectionSubtitle}>
+            {selectedCategoryFilter
+              ? `${visibleExpenses.length} em ${filteredCategoryLabel}`
+              : expenses.length > 0
+                ? 'Toque para editar'
+                : 'Período selecionado'}
+          </Text>
+        </View>
+
+        <Pressable
+          onPress={() => void handleExportMonthlyCsv()}
+          disabled={isExportingCsv || expenses.length === 0}
+          accessibilityRole="button"
+          accessibilityLabel="Exportar despesas do mês em CSV"
+          style={({ pressed }) => [
+            styles.exportMonthButton,
+            (isExportingCsv || expenses.length === 0) &&
+              styles.exportMonthButtonDisabled,
+            pressed &&
+              !isExportingCsv &&
+              expenses.length > 0 &&
+              styles.exportMonthButtonPressed,
+          ]}
+        >
+          {isExportingCsv ? (
+            <ActivityIndicator size="small" color={theme.colors.textPrimary} />
+          ) : (
+            <Feather name="share" size={13} color={theme.colors.textPrimary} />
+          )}
+          <Text style={styles.exportMonthLabel}>CSV</Text>
+        </Pressable>
       </View>
 
       <View style={styles.filterBarWrapper}>
@@ -260,16 +321,29 @@ export function HomeScreen() {
     );
   };
 
+  const centeredContainerStyle = {
+    width: '100%' as const,
+    maxWidth: maxContentWidth,
+    alignSelf: 'center' as const,
+    paddingHorizontal: horizontalPadding,
+  };
+
   return (
     <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
       <View style={styles.container}>
-        <View style={styles.topHeader}>
-          <View>
+        <View style={[styles.topHeader, centeredContainerStyle]}>
+          <View style={styles.headerTitleBlock}>
             <View style={styles.offlineBadge}>
               <View style={styles.offlineDot} />
               <Text style={styles.offlineText}>Offline-first</Text>
             </View>
-            <Text style={styles.title}>Minhas Despesas</Text>
+            <Text
+              style={[styles.title, isCompact && styles.titleCompact]}
+              numberOfLines={1}
+              adjustsFontSizeToFit
+            >
+              Minhas Despesas
+            </Text>
           </View>
 
           <Pressable
@@ -285,7 +359,7 @@ export function HomeScreen() {
           </Pressable>
         </View>
 
-        <View style={styles.selectorWrapper}>
+        <View style={[styles.selectorWrapper, centeredContainerStyle]}>
           <MonthSelector
             period={selectedPeriod}
             onPrevious={handlePreviousMonth}
@@ -307,7 +381,7 @@ export function HomeScreen() {
           ListHeaderComponent={renderHeader}
           ListEmptyComponent={renderEmpty}
           ItemSeparatorComponent={() => <View style={styles.itemSeparator} />}
-          contentContainerStyle={styles.listContent}
+          contentContainerStyle={[styles.listContent, centeredContainerStyle]}
           showsVerticalScrollIndicator={false}
         />
 
@@ -337,9 +411,13 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: theme.spacing.xl,
+    gap: theme.spacing.sm,
     paddingTop: theme.spacing.md,
     paddingBottom: theme.spacing.md,
+  },
+  headerTitleBlock: {
+    flex: 1,
+    minWidth: 0,
   },
   offlineBadge: {
     flexDirection: 'row',
@@ -361,6 +439,10 @@ const styles = StyleSheet.create({
     ...theme.typography.title,
     color: theme.colors.textPrimary,
   },
+  titleCompact: {
+    fontSize: 24,
+    lineHeight: 30,
+  },
   headerAddButton: {
     width: 44,
     height: 44,
@@ -368,17 +450,16 @@ const styles = StyleSheet.create({
     backgroundColor: theme.colors.ink,
     alignItems: 'center',
     justifyContent: 'center',
+    flexShrink: 0,
   },
   headerAddButtonPressed: {
     opacity: 0.85,
     transform: [{ scale: 0.95 }],
   },
   selectorWrapper: {
-    paddingHorizontal: theme.spacing.xl,
     paddingBottom: theme.spacing.lg,
   },
   listContent: {
-    paddingHorizontal: theme.spacing.xl,
     paddingBottom: 124,
   },
   listHeader: {
@@ -386,18 +467,47 @@ const styles = StyleSheet.create({
   },
   sectionHeader: {
     flexDirection: 'row',
-    alignItems: 'baseline',
+    alignItems: 'center',
     justifyContent: 'space-between',
+    gap: theme.spacing.sm,
     marginTop: theme.spacing.xl,
+  },
+  sectionTitleBlock: {
+    flex: 1,
+    minWidth: 0,
+    gap: 2,
   },
   sectionTitle: {
     ...theme.typography.sectionTitle,
     color: theme.colors.textPrimary,
   },
   sectionSubtitle: {
-    ...theme.typography.caption,
-    ...theme.typography.tabularNums,
+    ...theme.typography.numericCaption,
+    fontSize: 12,
     color: theme.colors.textSecondary,
+  },
+  exportMonthButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: theme.colors.surface,
+    borderWidth: 1,
+    borderColor: theme.colors.borderStrong,
+    borderRadius: theme.radius.md,
+    paddingHorizontal: 11,
+    paddingVertical: 7,
+    flexShrink: 0,
+  },
+  exportMonthButtonDisabled: {
+    opacity: 0.4,
+  },
+  exportMonthButtonPressed: {
+    opacity: 0.78,
+    transform: [{ scale: 0.97 }],
+  },
+  exportMonthLabel: {
+    ...theme.typography.micro,
+    color: theme.colors.textPrimary,
   },
   filterBarWrapper: {
     marginTop: theme.spacing.md,
@@ -429,13 +539,12 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   filteredEmptyTitle: {
-    ...theme.typography.body,
-    fontWeight: '700',
+    ...theme.typography.bodyBold,
     color: theme.colors.textPrimary,
     textAlign: 'center',
   },
   filteredEmptySubtitle: {
-    ...theme.typography.caption,
+    ...theme.typography.captionRegular,
     color: theme.colors.textSecondary,
     textAlign: 'center',
   },
@@ -443,7 +552,7 @@ const styles = StyleSheet.create({
     marginTop: 6,
     paddingHorizontal: 16,
     paddingVertical: 10,
-    borderRadius: theme.radius.pill,
+    borderRadius: theme.radius.md,
     backgroundColor: theme.colors.ink,
   },
   clearFilterButtonPressed: {
@@ -451,7 +560,7 @@ const styles = StyleSheet.create({
   },
   clearFilterLabel: {
     ...theme.typography.caption,
-    fontWeight: '700',
+    fontFamily: theme.fonts.sansBold,
     color: theme.colors.textOnInk,
   },
   errorBanner: {
@@ -471,7 +580,7 @@ const styles = StyleSheet.create({
   },
   retryText: {
     ...theme.typography.caption,
-    fontWeight: '700',
+    fontFamily: theme.fonts.sansBold,
     color: theme.colors.danger,
     textDecorationLine: 'underline',
   },

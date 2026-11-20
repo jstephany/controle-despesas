@@ -1,5 +1,5 @@
 import type { ComponentProps } from 'react';
-import { Platform, type TextStyle } from 'react-native';
+import type { TextStyle } from 'react-native';
 import type { Feather } from '@expo/vector-icons';
 
 import type { ExpenseCategory } from '@/domain/entities/Category';
@@ -12,18 +12,19 @@ export interface CategoryVisual {
   readonly shortLabel: string;
 }
 
-const FONT_FAMILY = Platform.select({
-  ios: 'System',
-  android: 'sans-serif',
-  default: 'System',
-});
+export const fonts = {
+  sansRegular: 'SpaceGrotesk_400Regular',
+  sansMedium: 'SpaceGrotesk_500Medium',
+  sansBold: 'SpaceGrotesk_700Bold',
+} as const;
 
 export const theme = {
+  fonts,
   colors: {
     canvas: '#F6F3EB',
     surface: '#FAF8F3',
     surfaceMuted: '#EFECE2',
-    border: '#E2DDD0',
+    border: '#D7D1C2',
     borderStrong: '#181816',
     ink: '#161615',
     inkElevated: '#242321',
@@ -52,57 +53,88 @@ export const theme = {
     xxl: 28,
   },
   radius: {
-    sm: 10,
-    md: 16,
-    item: 18,
-    card: 24,
+    sm: 6,
+    md: 8,
+    item: 10,
+    card: 10,
     pill: 999,
   },
   typography: {
-    fontFamily: FONT_FAMILY,
     tabularNums: {
       fontVariant: ['tabular-nums'],
     } as TextStyle,
     display: {
-      fontFamily: FONT_FAMILY,
-      fontSize: 34,
-      lineHeight: 40,
-      fontWeight: '700',
-      letterSpacing: -1.1,
+      fontFamily: fonts.sansBold,
+      fontSize: 32,
+      lineHeight: 38,
+      letterSpacing: -0.9,
     } as TextStyle,
     title: {
-      fontFamily: FONT_FAMILY,
+      fontFamily: fonts.sansBold,
       fontSize: 28,
       lineHeight: 34,
-      fontWeight: '700',
       letterSpacing: -0.7,
     } as TextStyle,
     sectionTitle: {
-      fontFamily: FONT_FAMILY,
+      fontFamily: fonts.sansBold,
       fontSize: 18,
       lineHeight: 24,
-      fontWeight: '700',
       letterSpacing: -0.3,
     } as TextStyle,
     body: {
-      fontFamily: FONT_FAMILY,
+      fontFamily: fonts.sansMedium,
       fontSize: 15,
       lineHeight: 21,
-      fontWeight: '500',
+    } as TextStyle,
+    bodyBold: {
+      fontFamily: fonts.sansBold,
+      fontSize: 15,
+      lineHeight: 21,
+      letterSpacing: -0.2,
     } as TextStyle,
     caption: {
-      fontFamily: FONT_FAMILY,
+      fontFamily: fonts.sansMedium,
       fontSize: 13,
       lineHeight: 18,
-      fontWeight: '500',
+    } as TextStyle,
+    captionRegular: {
+      fontFamily: fonts.sansRegular,
+      fontSize: 13,
+      lineHeight: 18,
     } as TextStyle,
     micro: {
-      fontFamily: FONT_FAMILY,
+      fontFamily: fonts.sansBold,
       fontSize: 11,
       lineHeight: 14,
-      fontWeight: '700',
-      letterSpacing: 0.9,
+      letterSpacing: 1.0,
       textTransform: 'uppercase',
+    } as TextStyle,
+    numericDisplay: {
+      fontFamily: fonts.sansBold,
+      fontSize: 28,
+      lineHeight: 34,
+      letterSpacing: -0.8,
+      fontVariant: ['tabular-nums'],
+    } as TextStyle,
+    numericTitle: {
+      fontFamily: fonts.sansBold,
+      fontSize: 22,
+      lineHeight: 28,
+      letterSpacing: -0.5,
+      fontVariant: ['tabular-nums'],
+    } as TextStyle,
+    numericBody: {
+      fontFamily: fonts.sansBold,
+      fontSize: 15,
+      lineHeight: 20,
+      letterSpacing: -0.2,
+      fontVariant: ['tabular-nums'],
+    } as TextStyle,
+    numericCaption: {
+      fontFamily: fonts.sansMedium,
+      fontSize: 12.5,
+      lineHeight: 17,
+      fontVariant: ['tabular-nums'],
     } as TextStyle,
   },
   categories: {

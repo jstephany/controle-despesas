@@ -106,17 +106,13 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   description: {
-    ...theme.typography.body,
-    fontWeight: '700',
+    ...theme.typography.bodyBold,
     color: theme.colors.textPrimary,
-    letterSpacing: -0.2,
     flex: 1,
     lineHeight: 20,
   },
   amount: {
-    ...theme.typography.body,
-    ...theme.typography.tabularNums,
-    fontWeight: '700',
+    ...theme.typography.numericBody,
     color: theme.colors.textPrimary,
     flexShrink: 0,
     textAlign: 'right',
@@ -136,7 +132,6 @@ const styles = StyleSheet.create({
   },
   categoryText: {
     ...theme.typography.caption,
-    fontWeight: '600',
     color: theme.colors.textSecondary,
   },
   metaDot: {
@@ -147,14 +142,13 @@ const styles = StyleSheet.create({
     opacity: 0.6,
   },
   metaDate: {
-    ...theme.typography.caption,
-    ...theme.typography.tabularNums,
+    ...theme.typography.numericCaption,
     color: theme.colors.textSecondary,
   },
   deleteButton: {
     width: 28,
     height: 28,
-    borderRadius: theme.radius.pill,
+    borderRadius: theme.radius.sm,
     backgroundColor: theme.colors.dangerSurface,
     alignItems: 'center',
     justifyContent: 'center',

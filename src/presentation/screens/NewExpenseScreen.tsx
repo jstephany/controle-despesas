@@ -34,6 +34,7 @@ import {
 import { CategoryPicker } from '../components/CategoryPicker';
 import { FormFieldError } from '../components/FormFieldError';
 import { useExpenses } from '../hooks/useExpenses';
+import { useResponsiveLayout } from '../hooks/useResponsiveLayout';
 import { theme } from '../theme/theme';
 
 interface NewExpenseScreenProps {
@@ -57,6 +58,7 @@ export function NewExpenseScreen({
   initialPeriod,
 }: NewExpenseScreenProps) {
   const { expenses, getExpenseById, addExpense, updateExpense } = useExpenses();
+  const { maxContentWidth, horizontalPadding } = useResponsiveLayout();
 
   const isEditMode = Boolean(expenseId);
   const existingInMemory = expenseId
@@ -197,13 +199,20 @@ export function NewExpenseScreen({
     }
   };
 
+  const centeredContainerStyle = {
+    width: '100%' as const,
+    maxWidth: maxContentWidth,
+    alignSelf: 'center' as const,
+    paddingHorizontal: horizontalPadding,
+  };
+
   return (
     <SafeAreaView style={styles.safeArea} edges={['top', 'bottom', 'left', 'right']}>
       <KeyboardAvoidingView
         style={styles.flex}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       >
-        <View style={styles.header}>
+        <View style={[styles.header, centeredContainerStyle]}>
           <Pressable
             onPress={() => router.back()}
             hitSlop={10}
@@ -232,7 +241,7 @@ export function NewExpenseScreen({
           <>
             <ScrollView
               style={styles.flex}
-              contentContainerStyle={styles.scrollContent}
+              contentContainerStyle={[styles.scrollContent, centeredContainerStyle]}
               keyboardShouldPersistTaps="handled"
               showsVerticalScrollIndicator={false}
             >
@@ -342,34 +351,36 @@ export function NewExpenseScreen({
             </ScrollView>
 
             <View style={styles.footer}>
-              <Pressable
-                onPress={() => void handleSubmit()}
-                disabled={isSubmitting}
-                accessibilityRole="button"
-                accessibilityLabel={
-                  isEditMode ? 'Salvar alterações' : 'Salvar despesa'
-                }
-                style={({ pressed }) => [
-                  styles.submitButton,
-                  isSubmitting && styles.submitButtonDisabled,
-                  pressed && !isSubmitting && styles.submitButtonPressed,
-                ]}
-              >
-                {isSubmitting ? (
-                  <ActivityIndicator size="small" color={theme.colors.textOnInk} />
-                ) : (
-                  <>
-                    <Feather
-                      name="check"
-                      size={18}
-                      color={theme.colors.textOnInk}
-                    />
-                    <Text style={styles.submitLabel}>
-                      {isEditMode ? 'Salvar alterações' : 'Salvar despesa'}
-                    </Text>
-                  </>
-                )}
-              </Pressable>
+              <View style={centeredContainerStyle}>
+                <Pressable
+                  onPress={() => void handleSubmit()}
+                  disabled={isSubmitting}
+                  accessibilityRole="button"
+                  accessibilityLabel={
+                    isEditMode ? 'Salvar alterações' : 'Salvar despesa'
+                  }
+                  style={({ pressed }) => [
+                    styles.submitButton,
+                    isSubmitting && styles.submitButtonDisabled,
+                    pressed && !isSubmitting && styles.submitButtonPressed,
+                  ]}
+                >
+                  {isSubmitting ? (
+                    <ActivityIndicator size="small" color={theme.colors.textOnInk} />
+                  ) : (
+                    <>
+                      <Feather
+                        name="check"
+                        size={18}
+                        color={theme.colors.textOnInk}
+                      />
+                      <Text style={styles.submitLabel}>
+                        {isEditMode ? 'Salvar alterações' : 'Salvar despesa'}
+                      </Text>
+                    </>
+                  )}
+                </Pressable>
+              </View>
             </View>
           </>
         )}
@@ -390,14 +401,13 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: theme.spacing.xl,
     paddingTop: theme.spacing.sm,
     paddingBottom: theme.spacing.md,
   },
   backButton: {
     width: 40,
     height: 40,
-    borderRadius: theme.radius.pill,
+    borderRadius: theme.radius.md,
     backgroundColor: theme.colors.surface,
     borderWidth: 1,
     borderColor: theme.colors.borderStrong,
@@ -427,7 +437,6 @@ const styles = StyleSheet.create({
     color: theme.colors.textSecondary,
   },
   scrollContent: {
-    paddingHorizontal: theme.spacing.xl,
     paddingTop: theme.spacing.sm,
     paddingBottom: theme.spacing.xxl,
     gap: theme.spacing.xl,
@@ -441,14 +450,11 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
   },
   label: {
-    ...theme.typography.caption,
-    fontWeight: '700',
+    ...theme.typography.micro,
     color: theme.colors.textPrimary,
-    letterSpacing: -0.1,
   },
   charCount: {
-    ...theme.typography.caption,
-    ...theme.typography.tabularNums,
+    ...theme.typography.numericCaption,
     fontSize: 12,
     color: theme.colors.textSecondary,
   },
@@ -456,21 +462,20 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: theme.colors.surface,
-    borderWidth: 1.25,
-    borderColor: theme.colors.border,
+    borderWidth: 1,
+    borderColor: theme.colors.borderStrong,
     borderRadius: theme.radius.card,
-    paddingHorizontal: 18,
+    paddingHorizontal: 16,
     paddingVertical: 14,
     gap: 10,
   },
   currencyPrefix: {
-    ...theme.typography.title,
-    fontSize: 22,
+    ...theme.typography.numericTitle,
+    fontSize: 20,
     color: theme.colors.textSecondary,
   },
   amountInput: {
-    ...theme.typography.display,
-    ...theme.typography.tabularNums,
+    ...theme.typography.numericDisplay,
     fontSize: 32,
     lineHeight: 38,
     color: theme.colors.textPrimary,
@@ -480,11 +485,11 @@ const styles = StyleSheet.create({
   textInput: {
     ...theme.typography.body,
     backgroundColor: theme.colors.surface,
-    borderWidth: 1.25,
+    borderWidth: 1,
     borderColor: theme.colors.border,
     borderRadius: theme.radius.md,
-    paddingHorizontal: 16,
-    paddingVertical: 14,
+    paddingHorizontal: 14,
+    paddingVertical: 13,
     color: theme.colors.textPrimary,
   },
   shortcutsRow: {
@@ -492,9 +497,9 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   shortcutPill: {
-    paddingHorizontal: 12,
+    paddingHorizontal: 11,
     paddingVertical: 5,
-    borderRadius: theme.radius.pill,
+    borderRadius: theme.radius.sm,
     backgroundColor: theme.colors.surface,
     borderWidth: 1,
     borderColor: theme.colors.borderStrong,
@@ -503,9 +508,8 @@ const styles = StyleSheet.create({
     backgroundColor: theme.colors.accentMustard,
   },
   shortcutText: {
-    ...theme.typography.caption,
-    fontSize: 12,
-    fontWeight: '700',
+    ...theme.typography.micro,
+    fontSize: 10,
     color: theme.colors.textPrimary,
   },
   dateInputRow: {
@@ -513,15 +517,15 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 10,
     backgroundColor: theme.colors.surface,
-    borderWidth: 1.25,
+    borderWidth: 1,
     borderColor: theme.colors.border,
     borderRadius: theme.radius.md,
-    paddingHorizontal: 16,
+    paddingHorizontal: 14,
     paddingVertical: 13,
   },
   dateInput: {
-    ...theme.typography.body,
-    ...theme.typography.tabularNums,
+    ...theme.typography.numericBody,
+    fontFamily: theme.fonts.sansMedium,
     color: theme.colors.textPrimary,
     flex: 1,
     padding: 0,
@@ -530,7 +534,6 @@ const styles = StyleSheet.create({
     borderColor: theme.colors.danger,
   },
   footer: {
-    paddingHorizontal: theme.spacing.xl,
     paddingTop: theme.spacing.sm,
     paddingBottom: theme.spacing.lg,
     backgroundColor: theme.colors.canvas,
@@ -543,7 +546,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     gap: 8,
     backgroundColor: theme.colors.ink,
-    borderRadius: theme.radius.pill,
+    borderRadius: theme.radius.md,
     paddingVertical: 16,
   },
   submitButtonPressed: {
@@ -554,8 +557,7 @@ const styles = StyleSheet.create({
     opacity: 0.6,
   },
   submitLabel: {
-    ...theme.typography.body,
-    fontWeight: '700',
+    ...theme.typography.bodyBold,
     color: theme.colors.textOnInk,
   },
 });

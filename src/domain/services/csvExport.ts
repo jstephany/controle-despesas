@@ -2,8 +2,12 @@ import {
   getCategoryMetadata,
   type ExpenseCategory,
 } from '../entities/Category';
-import type { Expense } from '../entities/Expense';
-import { formatIsoDateToBR, getTodayIsoDate } from '../utils/dateUtils';
+import type { Expense, MonthPeriod } from '../entities/Expense';
+import {
+  formatIsoDateToBR,
+  formatMonthPeriodKey,
+  getTodayIsoDate,
+} from '../utils/dateUtils';
 import type { AnalyticsPeriodPreset } from './analyticsService';
 import { formatCentsToInputValue } from './currency';
 
@@ -54,4 +58,8 @@ export function buildCsvFileName(
   const presetSlug = PRESET_SLUGS[preset];
   const categoryPart = categoryFilter ? `-${categoryFilter}` : '';
   return `despesas-${presetSlug}${categoryPart}-${dateSlug}.csv`;
+}
+
+export function buildMonthlyCsvFileName(period: MonthPeriod): string {
+  return `despesas-${formatMonthPeriodKey(period)}.csv`;
 }

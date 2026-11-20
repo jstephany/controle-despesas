@@ -9,6 +9,7 @@ import {
 import { formatCentsToBRL } from '@/domain/services/currency';
 import type { CategoryBreakdownItem } from '@/domain/services/expenseCalculations';
 
+import { useResponsiveLayout } from '../hooks/useResponsiveLayout';
 import { getCategoryVisual, theme } from '../theme/theme';
 
 interface MonthlySummaryCardProps {
@@ -29,12 +30,8 @@ interface RingSegment {
   readonly iconY: number;
 }
 
-const RING_SIZE = 248;
-const CENTER = RING_SIZE / 2;
-const RADIUS = 94;
-const STROKE_WIDTH = 30;
 const VISUAL_GAP_PX = 8;
-const ICON_HIT_SIZE = 32;
+const ICON_HIT_SIZE = 30;
 const START_ANGLE_DEG = -90;
 
 function polarToCartesian(
@@ -66,7 +63,10 @@ function describeArc(
 }
 
 function buildRingSegments(
-  activeItems: readonly CategoryBreakdownItem[]
+  activeItems: readonly CategoryBreakdownItem[],
+  center: number,
+  radius: number,
+  strokeWidth: number
 ): RingSegment[] {
   const count = activeItems.length;
   if (count === 0) {
@@ -79,7 +79,7 @@ function buildRingSegments(
   }
 
   if (count === 1) {
-    const iconPos = polarToCartesian(CENTER, CENTER, RADIUS, START_ANGLE_DEG);
+    const iconPos = polarToCartesian(center, center, radius, START_ANGLE_DEG);
     return [
       {
         item: activeItems[0],
@@ -93,7 +93,7 @@ function buildRingSegments(
     ];
   }
 
-  const gapAngleDeg = ((STROKE_WIDTH + VISUAL_GAP_PX) / RADIUS) * (180 / Math.PI);
+  const gapAngleDeg = ((strokeWidth + VISUAL_GAP_PX) / radius) * (180 / Math.PI);
   const availableSweep = Math.max(360 - count * gapAngleDeg, count * 0.5);
 
   let cursor = START_ANGLE_DEG;
@@ -104,7 +104,7 @@ function buildRingSegments(
     const startAngle = cursor;
     const endAngle = cursor + sweep;
     const midAngle = startAngle + sweep / 2;
-    const iconPos = polarToCartesian(CENTER, CENTER, RADIUS, midAngle);
+    const iconPos = polarToCartesian(center, center, radius, midAngle);
 
     cursor = endAngle + gapAngleDeg;
 
@@ -113,7 +113,7 @@ function buildRingSegments(
       startAngle,
       endAngle,
       midAngle,
-      pathData: describeArc(CENTER, CENTER, RADIUS, startAngle, endAngle),
+      pathData: describeArc(center, center, radius, startAngle, endAngle),
       iconX: iconPos.x,
       iconY: iconPos.y,
     };
@@ -127,8 +127,21 @@ export function MonthlySummaryCard({
   selectedCategory,
   onSelectCategory,
 }: MonthlySummaryCardProps) {
+  const { donutSize, donutStrokeWidth, isCompact } = useResponsiveLayout();
+  const center = donutSize / 2;
+  const radius = Math.max(60, Math.round(center - donutStrokeWidth / 2 - 10));
+  const innerContentWidth = Math.max(
+    112,
+    Math.round((radius - donutStrokeWidth / 2) * 1.75)
+  );
+
   const activeItems = categoryBreakdown.filter((item) => item.totalCents > 0);
-  const segments = buildRingSegments(activeItems);
+  const segments = buildRingSegments(
+    activeItems,
+    center,
+    radius,
+    donutStrokeWidth
+  );
 
   const selectedItem =
     selectedCategory !== null
@@ -154,7 +167,7 @@ export function MonthlySummaryCard({
         : `${expenseCount} lançamentos`;
 
   return (
-    <View style={styles.card}>
+    <View style={[styles.card, isCompact && styles.cardCompact]}>
       <View style={styles.topRow}>
         <Text style={styles.eyebrow}>Resumo do mês</Text>
         <View style={styles.countBadge}>
@@ -162,24 +175,29 @@ export function MonthlySummaryCard({
         </View>
       </View>
 
-      <View style={styles.ringWrapper}>
-        <Svg width={RING_SIZE} height={RING_SIZE}>
+      <View
+        style={[
+          styles.ringWrapper,
+          { width: donutSize, height: donutSize },
+        ]}
+      >
+        <Svg width={donutSize} height={donutSize}>
           {segments.length === 0 ? (
             <Circle
-              cx={CENTER}
-              cy={CENTER}
-              r={RADIUS}
+              cx={center}
+              cy={center}
+              r={radius}
               stroke={theme.colors.surfaceMuted}
-              strokeWidth={STROKE_WIDTH}
+              strokeWidth={donutStrokeWidth}
               fill="none"
             />
           ) : segments.length === 1 ? (
             <Circle
-              cx={CENTER}
-              cy={CENTER}
-              r={RADIUS}
+              cx={center}
+              cy={center}
+              r={radius}
               stroke={getCategoryVisual(segments[0].item.category).fill}
-              strokeWidth={STROKE_WIDTH}
+              strokeWidth={donutStrokeWidth}
               fill="none"
               onPress={() => handleToggleCategory(segments[0].item.category)}
             />
@@ -194,7 +212,7 @@ export function MonthlySummaryCard({
                   key={segment.item.category}
                   d={segment.pathData}
                   stroke={visual.fill}
-                  strokeWidth={STROKE_WIDTH}
+                  strokeWidth={donutStrokeWidth}
                   strokeLinecap="round"
                   strokeOpacity={isDimmed ? 0.35 : 1}
                   fill="none"
@@ -231,16 +249,19 @@ export function MonthlySummaryCard({
             >
               <Feather
                 name={visual.icon}
-                size={15}
+                size={isCompact ? 13 : 15}
                 color={theme.colors.textPrimary}
               />
             </Pressable>
           );
         })}
 
-        <View style={styles.centerContent} pointerEvents="none">
+        <View
+          style={[styles.centerContent, { width: innerContentWidth }]}
+          pointerEvents="none"
+        >
           <Text
-            style={styles.totalValue}
+            style={[styles.totalValue, isCompact && styles.totalValueCompact]}
             adjustsFontSizeToFit
             numberOfLines={1}
           >
@@ -266,8 +287,8 @@ export function MonthlySummaryCard({
               />
             </View>
             <Text style={styles.detailText} numberOfLines={1}>
-              {selectedMeta.label} • {formatCentsToBRL(selectedItem.totalCents)} (
-              {selectedItem.percentage}%)
+              {selectedMeta.label} • {formatCentsToBRL(selectedItem.totalCents)}{' '}
+              ({selectedItem.percentage}%)
             </Text>
           </View>
 
@@ -305,6 +326,9 @@ const styles = StyleSheet.create({
     paddingBottom: theme.spacing.xl,
     alignItems: 'center',
   },
+  cardCompact: {
+    paddingHorizontal: theme.spacing.md,
+  },
   topRow: {
     width: '100%',
     flexDirection: 'row',
@@ -320,20 +344,16 @@ const styles = StyleSheet.create({
     backgroundColor: theme.colors.surfaceMuted,
     borderWidth: 1,
     borderColor: theme.colors.border,
-    borderRadius: theme.radius.pill,
-    paddingHorizontal: 10,
+    borderRadius: theme.radius.sm,
+    paddingHorizontal: 9,
     paddingVertical: 4,
   },
   countText: {
-    ...theme.typography.caption,
-    ...theme.typography.tabularNums,
-    fontSize: 12,
-    fontWeight: '600',
+    ...theme.typography.numericCaption,
+    fontSize: 11.5,
     color: theme.colors.textPrimary,
   },
   ringWrapper: {
-    width: RING_SIZE,
-    height: RING_SIZE,
     alignItems: 'center',
     justifyContent: 'center',
     marginTop: theme.spacing.sm,
@@ -354,24 +374,26 @@ const styles = StyleSheet.create({
   },
   centerContent: {
     position: 'absolute',
-    width: 148,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingHorizontal: 6,
+    paddingHorizontal: 4,
   },
   totalValue: {
-    ...theme.typography.title,
-    ...theme.typography.tabularNums,
-    fontSize: 26,
-    lineHeight: 32,
+    ...theme.typography.numericDisplay,
+    fontSize: 25,
+    lineHeight: 31,
     color: theme.colors.textPrimary,
     textAlign: 'center',
   },
+  totalValueCompact: {
+    fontSize: 21,
+    lineHeight: 27,
+  },
   centerSubtitle: {
-    ...theme.typography.caption,
-    fontSize: 12,
+    ...theme.typography.micro,
+    fontSize: 9.5,
     color: theme.colors.textSecondary,
-    marginTop: 2,
+    marginTop: 4,
     textAlign: 'center',
   },
   detailBar: {
@@ -380,10 +402,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     backgroundColor: theme.colors.ink,
-    borderRadius: theme.radius.pill,
-    paddingLeft: 8,
-    paddingRight: 12,
-    paddingVertical: 8,
+    borderRadius: theme.radius.md,
+    paddingLeft: 10,
+    paddingRight: 10,
+    paddingVertical: 9,
     marginTop: theme.spacing.md,
     gap: 8,
   },
@@ -401,22 +423,21 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   detailText: {
-    ...theme.typography.caption,
-    ...theme.typography.tabularNums,
-    fontWeight: '700',
+    ...theme.typography.numericCaption,
+    fontFamily: theme.fonts.sansBold,
     color: theme.colors.textOnInk,
     flexShrink: 1,
   },
   detailCloseButton: {
     width: 24,
     height: 24,
-    borderRadius: theme.radius.pill,
+    borderRadius: theme.radius.sm,
     backgroundColor: theme.colors.inkElevated,
     alignItems: 'center',
     justifyContent: 'center',
   },
   hintText: {
-    ...theme.typography.caption,
+    ...theme.typography.captionRegular,
     fontSize: 12,
     color: theme.colors.textSecondary,
     marginTop: theme.spacing.md,

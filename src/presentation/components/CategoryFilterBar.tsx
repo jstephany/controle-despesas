@@ -106,14 +106,13 @@ const styles = StyleSheet.create({
   },
   chipLabel: {
     ...theme.typography.caption,
-    fontWeight: '600',
     color: theme.colors.textPrimary,
   },
   chipLabelActive: {
-    fontWeight: '700',
+    fontFamily: theme.fonts.sansBold,
   },
   allChipLabelActive: {
-    fontWeight: '700',
+    fontFamily: theme.fonts.sansBold,
     color: theme.colors.textOnInk,
   },
 });

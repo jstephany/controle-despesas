@@ -29,9 +29,9 @@ import { formatCentsToBRL } from '@/domain/services/currency';
 
 import { CategoryFilterBar } from '../components/CategoryFilterBar';
 import { useExpenses } from '../hooks/useExpenses';
+import { useResponsiveLayout } from '../hooks/useResponsiveLayout';
 import { getCategoryVisual, theme } from '../theme/theme';
 
-const CHART_MAX_HEIGHT = 92;
 const CHART_MIN_ACTIVE_HEIGHT = 14;
 const CHART_EMPTY_BAR_HEIGHT = 6;
 
@@ -50,6 +50,14 @@ function formatCompactCents(cents: number): string {
 
 export function AnalyticsScreen() {
   const { allExpenses, isInitializing } = useExpenses();
+  const {
+    maxContentWidth,
+    horizontalPadding,
+    isCompact,
+    barChartMaxHeight,
+    barMaxWidth,
+    barScrollColumnWidth,
+  } = useResponsiveLayout();
 
   const [preset, setPreset] = useState<AnalyticsPeriodPreset>('last_3_months');
   const [selectedCategory, setSelectedCategory] =
@@ -108,11 +116,12 @@ export function AnalyticsScreen() {
   const renderChartColumns = () =>
     report.monthlySeries.map((point) => {
       const hasSpend = point.totalCents > 0;
-      const isPeak = hasSpend && point.monthKey === peakMonthKey && !selectedCategory;
+      const isPeak =
+        hasSpend && point.monthKey === peakMonthKey && !selectedCategory;
       const barHeight = hasSpend
         ? Math.max(
             CHART_MIN_ACTIVE_HEIGHT,
-            Math.round(point.ratioToMax * CHART_MAX_HEIGHT)
+            Math.round(point.ratioToMax * barChartMaxHeight)
           )
         : CHART_EMPTY_BAR_HEIGHT;
 
@@ -121,10 +130,12 @@ export function AnalyticsScreen() {
           key={point.monthKey}
           style={[
             styles.barColumn,
-            isScrollableChart && styles.barColumnScrollable,
+            isScrollableChart && { flex: 0, width: barScrollColumnWidth },
           ]}
         >
-          <View style={styles.barTrack}>
+          <View
+            style={[styles.barTrack, { height: barChartMaxHeight + 22 }]}
+          >
             {hasSpend ? (
               <Text style={styles.barValue} numberOfLines={1}>
                 {formatCompactCents(point.totalCents)}
@@ -134,6 +145,7 @@ export function AnalyticsScreen() {
               style={[
                 styles.barFill,
                 {
+                  maxWidth: barMaxWidth,
                   height: barHeight,
                   backgroundColor: hasSpend
                     ? isPeak
@@ -158,13 +170,26 @@ export function AnalyticsScreen() {
     <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
       <ScrollView
         style={styles.container}
-        contentContainerStyle={styles.scrollContent}
+        contentContainerStyle={[
+          styles.scrollContent,
+          {
+            width: '100%',
+            maxWidth: maxContentWidth,
+            alignSelf: 'center',
+            paddingHorizontal: horizontalPadding,
+          },
+        ]}
         showsVerticalScrollIndicator={false}
       >
         <View style={styles.topHeader}>
-          <View>
+          <View style={styles.headerTitleBlock}>
             <Text style={styles.eyebrow}>Relatórios offline</Text>
-            <Text style={styles.title}>Análise</Text>
+            <Text
+              style={[styles.title, isCompact && styles.titleCompact]}
+              numberOfLines={1}
+            >
+              Análise
+            </Text>
           </View>
 
           <Pressable
@@ -174,6 +199,7 @@ export function AnalyticsScreen() {
             accessibilityLabel="Exportar relatório em CSV"
             style={({ pressed }) => [
               styles.exportButton,
+              isCompact && styles.exportButtonCompact,
               (isExporting || report.filteredExpenses.length === 0) &&
                 styles.exportButtonDisabled,
               pressed &&
@@ -187,11 +213,13 @@ export function AnalyticsScreen() {
             ) : (
               <Feather
                 name="share"
-                size={15}
+                size={14}
                 color={theme.colors.textPrimary}
               />
             )}
-            <Text style={styles.exportLabel}>Exportar CSV</Text>
+            <Text style={styles.exportLabel}>
+              {isCompact ? 'CSV' : 'Exportar CSV'}
+            </Text>
           </Pressable>
         </View>
 
@@ -234,7 +262,7 @@ export function AnalyticsScreen() {
           />
         </View>
 
-        <View style={styles.darkCard}>
+        <View style={[styles.darkCard, isCompact && styles.darkCardCompact]}>
           <View style={styles.metricsRow}>
             <View style={styles.metricBlock}>
               <Text style={styles.metricEyebrow}>Total do período</Text>
@@ -405,7 +433,6 @@ const styles = StyleSheet.create({
     backgroundColor: theme.colors.canvas,
   },
   scrollContent: {
-    paddingHorizontal: theme.spacing.xl,
     paddingTop: theme.spacing.md,
     paddingBottom: 124,
   },
@@ -416,6 +443,10 @@ const styles = StyleSheet.create({
     gap: theme.spacing.sm,
     marginBottom: theme.spacing.lg,
   },
+  headerTitleBlock: {
+    flex: 1,
+    minWidth: 0,
+  },
   eyebrow: {
     ...theme.typography.micro,
     color: theme.colors.textSecondary,
@@ -425,6 +456,10 @@ const styles = StyleSheet.create({
     ...theme.typography.title,
     color: theme.colors.textPrimary,
   },
+  titleCompact: {
+    fontSize: 24,
+    lineHeight: 30,
+  },
   exportButton: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -432,16 +467,20 @@ const styles = StyleSheet.create({
     backgroundColor: theme.colors.surface,
     borderWidth: 1,
     borderColor: theme.colors.borderStrong,
-    borderRadius: theme.radius.pill,
-    paddingHorizontal: 14,
-    paddingVertical: 10,
+    borderRadius: theme.radius.md,
+    paddingHorizontal: 13,
+    paddingVertical: 9,
+    flexShrink: 0,
+  },
+  exportButtonCompact: {
+    paddingHorizontal: 11,
+    paddingVertical: 8,
   },
   exportButtonDisabled: {
     opacity: 0.45,
   },
   exportLabel: {
-    ...theme.typography.caption,
-    fontWeight: '700',
+    ...theme.typography.micro,
     color: theme.colors.textPrimary,
   },
   pressed: {
@@ -454,9 +493,9 @@ const styles = StyleSheet.create({
     paddingVertical: 2,
   },
   periodChip: {
-    paddingHorizontal: 14,
-    paddingVertical: 9,
-    borderRadius: theme.radius.pill,
+    paddingHorizontal: 13,
+    paddingVertical: 8,
+    borderRadius: theme.radius.md,
     backgroundColor: theme.colors.surface,
     borderWidth: 1,
     borderColor: theme.colors.borderStrong,
@@ -467,7 +506,7 @@ const styles = StyleSheet.create({
   },
   periodChipLabel: {
     ...theme.typography.caption,
-    fontWeight: '700',
+    fontFamily: theme.fonts.sansBold,
     color: theme.colors.textPrimary,
   },
   periodChipLabelActive: {
@@ -482,6 +521,9 @@ const styles = StyleSheet.create({
     borderRadius: theme.radius.card,
     padding: theme.spacing.xl,
   },
+  darkCardCompact: {
+    padding: theme.spacing.lg,
+  },
   metricsRow: {
     flexDirection: 'row',
     alignItems: 'stretch',
@@ -489,6 +531,7 @@ const styles = StyleSheet.create({
   },
   metricBlock: {
     flex: 1,
+    minWidth: 0,
     gap: 6,
   },
   metricDivider: {
@@ -501,17 +544,15 @@ const styles = StyleSheet.create({
     color: theme.colors.textMutedOnInk,
   },
   metricTotal: {
-    ...theme.typography.title,
-    ...theme.typography.tabularNums,
-    fontSize: 24,
-    lineHeight: 30,
+    ...theme.typography.numericTitle,
+    fontSize: 23,
+    lineHeight: 29,
     color: theme.colors.textOnInk,
   },
   metricAverage: {
-    ...theme.typography.title,
-    ...theme.typography.tabularNums,
-    fontSize: 22,
-    lineHeight: 30,
+    ...theme.typography.numericTitle,
+    fontSize: 21,
+    lineHeight: 29,
     color: theme.colors.accentSage,
   },
   metaBadgeRow: {
@@ -524,25 +565,24 @@ const styles = StyleSheet.create({
     backgroundColor: theme.colors.inkElevated,
     borderWidth: 1,
     borderColor: theme.colors.inkDivider,
-    borderRadius: theme.radius.pill,
-    paddingHorizontal: 10,
+    borderRadius: theme.radius.sm,
+    paddingHorizontal: 9,
     paddingVertical: 4,
   },
   metaBadgeText: {
-    ...theme.typography.caption,
-    ...theme.typography.tabularNums,
-    fontSize: 12,
+    ...theme.typography.numericCaption,
+    fontSize: 11.5,
     color: theme.colors.textMutedOnInk,
   },
   metaCategoryBadge: {
-    borderRadius: theme.radius.pill,
-    paddingHorizontal: 10,
+    borderRadius: theme.radius.sm,
+    paddingHorizontal: 9,
     paddingVertical: 4,
   },
   metaCategoryText: {
     ...theme.typography.caption,
-    fontSize: 12,
-    fontWeight: '700',
+    fontFamily: theme.fonts.sansBold,
+    fontSize: 11.5,
     color: theme.colors.textPrimary,
   },
   chartSection: {
@@ -579,47 +619,40 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-end',
     gap: 8,
   },
-  barColumnScrollable: {
-    flex: 0,
-    width: 48,
-  },
   barTrack: {
     width: '100%',
-    height: CHART_MAX_HEIGHT + 22,
     alignItems: 'center',
     justifyContent: 'flex-end',
     gap: 4,
   },
   barValue: {
-    ...theme.typography.tabularNums,
-    fontSize: 10,
-    fontWeight: '600',
+    ...theme.typography.numericCaption,
+    fontSize: 10.5,
     color: theme.colors.textMutedOnInk,
   },
   barFill: {
     width: '78%',
-    maxWidth: 36,
-    borderTopLeftRadius: 10,
-    borderTopRightRadius: 10,
-    borderBottomLeftRadius: 3,
-    borderBottomRightRadius: 3,
+    borderTopLeftRadius: 6,
+    borderTopRightRadius: 6,
+    borderBottomLeftRadius: 2,
+    borderBottomRightRadius: 2,
   },
   barMonthLabel: {
-    ...theme.typography.tabularNums,
+    ...theme.typography.numericCaption,
     fontSize: 11,
-    fontWeight: '500',
     color: theme.colors.textMutedOnInk,
     opacity: 0.72,
   },
   barMonthLabelActive: {
+    fontFamily: theme.fonts.sansBold,
     color: theme.colors.textOnInk,
-    fontWeight: '700',
     opacity: 1,
   },
   sectionHeader: {
     flexDirection: 'row',
     alignItems: 'baseline',
     justifyContent: 'space-between',
+    gap: theme.spacing.sm,
     marginTop: theme.spacing.xl,
     marginBottom: theme.spacing.md,
   },
@@ -628,7 +661,8 @@ const styles = StyleSheet.create({
     color: theme.colors.textPrimary,
   },
   sectionSubtitle: {
-    ...theme.typography.caption,
+    ...theme.typography.micro,
+    fontSize: 10,
     color: theme.colors.textSecondary,
   },
   rankingList: {
@@ -654,6 +688,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 10,
     flex: 1,
+    minWidth: 0,
   },
   rankingIconBadge: {
     width: 38,
@@ -661,49 +696,47 @@ const styles = StyleSheet.create({
     borderRadius: theme.radius.pill,
     alignItems: 'center',
     justifyContent: 'center',
+    flexShrink: 0,
   },
   rankingInfo: {
     flex: 1,
+    minWidth: 0,
     gap: 2,
   },
   rankingName: {
-    ...theme.typography.body,
-    fontWeight: '700',
+    ...theme.typography.bodyBold,
     color: theme.colors.textPrimary,
   },
   rankingCount: {
-    ...theme.typography.caption,
-    ...theme.typography.tabularNums,
+    ...theme.typography.numericCaption,
     fontSize: 12,
     color: theme.colors.textSecondary,
   },
   rankingRight: {
     alignItems: 'flex-end',
+    flexShrink: 0,
     gap: 2,
   },
   rankingAmount: {
-    ...theme.typography.body,
-    ...theme.typography.tabularNums,
-    fontWeight: '700',
+    ...theme.typography.numericBody,
     color: theme.colors.textPrimary,
   },
   rankingPercent: {
-    ...theme.typography.caption,
-    ...theme.typography.tabularNums,
+    ...theme.typography.numericCaption,
+    fontFamily: theme.fonts.sansBold,
     fontSize: 12,
-    fontWeight: '700',
     color: theme.colors.textSecondary,
   },
   rankingTrack: {
     width: '100%',
-    height: 7,
-    borderRadius: theme.radius.pill,
+    height: 6,
+    borderRadius: theme.radius.sm,
     backgroundColor: theme.colors.surfaceMuted,
     overflow: 'hidden',
   },
   rankingFill: {
     height: '100%',
-    borderRadius: theme.radius.pill,
+    borderRadius: theme.radius.sm,
   },
   emptyCard: {
     backgroundColor: theme.colors.surface,
@@ -725,13 +758,12 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   emptyTitle: {
-    ...theme.typography.body,
-    fontWeight: '700',
+    ...theme.typography.bodyBold,
     color: theme.colors.textPrimary,
     textAlign: 'center',
   },
   emptyText: {
-    ...theme.typography.caption,
+    ...theme.typography.captionRegular,
     color: theme.colors.textSecondary,
     textAlign: 'center',
     maxWidth: 260,
