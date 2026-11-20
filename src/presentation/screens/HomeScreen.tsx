@@ -4,6 +4,8 @@ import { useCallback, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
+  Animated,
+  Easing,
   FlatList,
   Platform,
   Pressable,
@@ -20,8 +22,13 @@ import {
 import type { Expense } from '@/domain/entities/Expense';
 import { formatCentsToBRL } from '@/domain/services/currency';
 import { filterExpensesByCategory } from '@/domain/services/expenseCalculations';
-import { formatMonthPeriodLabel } from '@/domain/utils/dateUtils';
+import {
+  formatMonthPeriodLabel,
+  getCurrentMonthPeriod,
+} from '@/domain/utils/dateUtils';
 
+import { BudgetModal } from '../components/BudgetModal';
+import { BudgetProgressSection } from '../components/BudgetProgressSection';
 import { CategoryFilterBar } from '../components/CategoryFilterBar';
 import { EmptyState } from '../components/EmptyState';
 import { ExpenseItem } from '../components/ExpenseItem';
@@ -30,12 +37,16 @@ import { MonthSelector } from '../components/MonthSelector';
 import { useExpenses } from '../hooks/useExpenses';
 import { theme } from '../theme/theme';
 
+const TRANSITION_SHIFT_PX = 28;
+
 export function HomeScreen() {
   const {
     selectedPeriod,
     expenses,
     monthlyTotalCents,
     categoryBreakdown,
+    monthlyBudget,
+    budgetEvaluation,
     isInitializing,
     isLoading,
     error,
@@ -43,6 +54,8 @@ export function HomeScreen() {
     goToNextMonth,
     goToCurrentMonth,
     deleteExpense,
+    saveMonthlyBudget,
+    removeMonthlyBudget,
     refresh,
   } = useExpenses();
 
@@ -50,26 +63,73 @@ export function HomeScreen() {
     useState<ExpenseCategory | null>(null);
   const [selectedCategoryFilter, setSelectedCategoryFilter] =
     useState<ExpenseCategory | null>(null);
+  const [isBudgetModalVisible, setIsBudgetModalVisible] = useState(false);
+
+  const [translateX] = useState(() => new Animated.Value(0));
+  const [opacity] = useState(() => new Animated.Value(1));
+
+  const animateMonthTransition = useCallback(
+    (direction: 1 | -1, applyPeriodChange: () => void) => {
+      translateX.stopAnimation();
+      opacity.stopAnimation();
+
+      Animated.parallel([
+        Animated.timing(translateX, {
+          toValue: -TRANSITION_SHIFT_PX * direction,
+          duration: 100,
+          easing: Easing.in(Easing.quad),
+          useNativeDriver: true,
+        }),
+        Animated.timing(opacity, {
+          toValue: 0.2,
+          duration: 100,
+          useNativeDriver: true,
+        }),
+      ]).start(() => {
+        setSelectedChartCategory(null);
+        applyPeriodChange();
+
+        translateX.setValue(TRANSITION_SHIFT_PX * direction);
+
+        Animated.parallel([
+          Animated.timing(translateX, {
+            toValue: 0,
+            duration: 190,
+            easing: Easing.out(Easing.cubic),
+            useNativeDriver: true,
+          }),
+          Animated.timing(opacity, {
+            toValue: 1,
+            duration: 190,
+            useNativeDriver: true,
+          }),
+        ]).start();
+      });
+    },
+    [opacity, translateX]
+  );
+
+  const handlePreviousMonth = useCallback(() => {
+    animateMonthTransition(-1, goToPreviousMonth);
+  }, [animateMonthTransition, goToPreviousMonth]);
+
+  const handleNextMonth = useCallback(() => {
+    animateMonthTransition(1, goToNextMonth);
+  }, [animateMonthTransition, goToNextMonth]);
+
+  const handleCurrentMonth = useCallback(() => {
+    const current = getCurrentMonthPeriod();
+    const isForward =
+      current.year > selectedPeriod.year ||
+      (current.year === selectedPeriod.year &&
+        current.month >= selectedPeriod.month);
+    animateMonthTransition(isForward ? 1 : -1, goToCurrentMonth);
+  }, [animateMonthTransition, goToCurrentMonth, selectedPeriod]);
 
   const visibleExpenses = useMemo(
     () => filterExpensesByCategory(expenses, selectedCategoryFilter),
     [expenses, selectedCategoryFilter]
   );
-
-  const handlePreviousMonth = useCallback(() => {
-    setSelectedChartCategory(null);
-    goToPreviousMonth();
-  }, [goToPreviousMonth]);
-
-  const handleNextMonth = useCallback(() => {
-    setSelectedChartCategory(null);
-    goToNextMonth();
-  }, [goToNextMonth]);
-
-  const handleCurrentMonth = useCallback(() => {
-    setSelectedChartCategory(null);
-    goToCurrentMonth();
-  }, [goToCurrentMonth]);
 
   const handleOpenNewExpense = useCallback(() => {
     router.push('/new-expense');
@@ -115,20 +175,43 @@ export function HomeScreen() {
     [deleteExpense]
   );
 
+  const handleSaveBudget = useCallback(
+    async (limitCents: number) => {
+      await saveMonthlyBudget(limitCents);
+    },
+    [saveMonthlyBudget]
+  );
+
+  const handleRemoveBudget = useCallback(async () => {
+    await removeMonthlyBudget();
+  }, [removeMonthlyBudget]);
+
   const monthLabel = formatMonthPeriodLabel(selectedPeriod);
   const filteredCategoryLabel = selectedCategoryFilter
     ? getCategoryMetadata(selectedCategoryFilter).label
     : null;
 
+  const animatedMonthStyle = {
+    opacity,
+    transform: [{ translateX }],
+  };
+
   const renderHeader = () => (
     <View style={styles.listHeader}>
-      <MonthlySummaryCard
-        totalCents={monthlyTotalCents}
-        expenseCount={expenses.length}
-        categoryBreakdown={categoryBreakdown}
-        selectedCategory={selectedChartCategory}
-        onSelectCategory={setSelectedChartCategory}
-      />
+      <Animated.View style={animatedMonthStyle}>
+        <MonthlySummaryCard
+          totalCents={monthlyTotalCents}
+          expenseCount={expenses.length}
+          categoryBreakdown={categoryBreakdown}
+          selectedCategory={selectedChartCategory}
+          onSelectCategory={setSelectedChartCategory}
+        />
+
+        <BudgetProgressSection
+          evaluation={budgetEvaluation}
+          onPressConfigure={() => setIsBudgetModalVisible(true)}
+        />
+      </Animated.View>
 
       {error ? (
         <View style={styles.errorBanner} accessibilityRole="alert">
@@ -194,10 +277,12 @@ export function HomeScreen() {
     }
 
     return (
-      <EmptyState
-        monthLabel={monthLabel}
-        onAddPress={handleOpenNewExpense}
-      />
+      <Animated.View style={{ opacity }}>
+        <EmptyState
+          monthLabel={monthLabel}
+          onAddPress={handleOpenNewExpense}
+        />
+      </Animated.View>
     );
   };
 
@@ -268,6 +353,15 @@ export function HomeScreen() {
             </Pressable>
           </View>
         ) : null}
+
+        <BudgetModal
+          visible={isBudgetModalVisible}
+          monthLabel={monthLabel}
+          currentBudget={monthlyBudget}
+          onClose={() => setIsBudgetModalVisible(false)}
+          onSave={handleSaveBudget}
+          onRemove={handleRemoveBudget}
+        />
       </View>
     </SafeAreaView>
   );

@@ -17,15 +17,15 @@ O projeto segue uma **Arquitetura Limpa Pragmática**, separando claramente as r
   - `utils/dateUtils.ts` e `utils/idGenerator.ts`: datas timezone-safe (`YYYY-MM-DD`), navegação mês/ano com virada de ano e geração offline de IDs.
 - **Dados (`src/data/`):** implementado com persistência 100% local via `expo-sqlite`:
   - `database/types.ts`: interface `SQLiteExecutor` (subconjunto estrutural de `SQLiteDatabase`) para injeção de dependência e testes unitários sem acoplamento nativo.
-  - `database/migrations.ts`: criação idempotente da tabela `expenses` (`CHECK (amount_cents > 0)`), modo `WAL`, índice composto `idx_expenses_date` e versionamento nativo via `PRAGMA user_version`.
+  - `database/migrations.ts`: criação idempotente das tabelas `expenses` (`CHECK (amount_cents > 0)`) e `monthly_budgets` (`CHECK (limit_cents > 0)`, indexada por `YYYY-MM`), modo `WAL`, índice composto `idx_expenses_date` e versionamento nativo via `PRAGMA user_version` (v2).
   - `database/client.ts`: abertura singleton assíncrona (`openDatabaseAsync('expenses.db')`) com execução automática de migrações e recuperação em caso de erro.
   - `mappers/expenseMapper.ts`: conversão tipada `ExpenseRow` (`snake_case`) ↔ `Expense` (`camelCase`) com fallback seguro de categoria.
-  - `repositories/SqliteExpenseRepository.ts`: implementação concreta de `IExpenseRepository` com queries parametrizadas (`create`, `findByMonth` por intervalo `[startDate, endDate)` e `deleteById`) e checagens defensivas de invariantes.
+  - `repositories/SqliteExpenseRepository.ts` e `repositories/SqliteBudgetRepository.ts`: implementações concretas com queries parametrizadas e checagens defensivas de invariantes.
 - **Apresentação (`app/` e `src/presentation/`):** implementada com identidade visual **"Eco-Fintech Editorial"** (canvas quente `#F6F3EB`, contraste em carvão `#161615`, categorias em tons orgânicos/pastéis e `tabular-nums` em todos os valores e datas):
   - `theme/theme.ts`: tokens centralizados de cores, tipografia, espaçamentos, raios e paleta visual por categoria.
   - `context/ExpensesContext.tsx` e `hooks/useExpenses.ts`: estado reativo do período ativo, listagem, resumo mensal, gráfico por categoria e ações offline (`addExpense`, `deleteExpense`, navegação mês/ano).
   - `screens/HomeScreen.tsx` e `screens/NewExpenseScreen.tsx`: telas desacopladas de SQL e regras de validação, conectadas às rotas finas `app/index.tsx`, `app/new-expense.tsx` e `app/_layout.tsx`.
-  - `components/`: `MonthSelector`, `MonthlySummaryCard` (gráfico circular/donut interativo com `react-native-svg` e barra de detalhe por categoria), `CategoryFilterBar` (filtro horizontal por categoria), `ExpenseItem` (toque para editar + exclusão), `EmptyState`, `CategoryPicker` e `FormFieldError`.
+  - `components/`: `MonthSelector`, `MonthlySummaryCard` (gráfico circular/donut interativo com `react-native-svg` e animação suave na troca de mês), `BudgetProgressSection` e `BudgetModal` (orçamento mensal opcional com alertas em 3 níveis), `CategoryFilterBar`, `ExpenseItem` (toque para editar + exclusão), `EmptyState`, `CategoryPicker` e `FormFieldError`.
 
 ### Justificativa Técnica
 - **Valores monetários em centavos (`INTEGER`):** evita erros de arredondamento de ponto flutuante em somas mensais.
