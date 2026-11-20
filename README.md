@@ -151,7 +151,7 @@ npm run lint
 
 ## Capturas de Tela
 
-|    Tela Inicial (Resumo, Donut e Orçamento)     |               Nova / Editar Despesa               |             Tela de Análise por Período             |
+|                   Tela Inicial                  |                   Editar Despesa                  |             Tela de Análise por Período             |
 | :---------------------------------------------: | :-----------------------------------------------: | :-------------------------------------------------: |
 | ![Tela Inicial](./docs/screenshots/inicio.jpeg) | ![Nova Despesa](./docs/screenshots/cadastro.jpeg) | ![Tela de Análise](./docs/screenshots/analise.jpeg) |
 
