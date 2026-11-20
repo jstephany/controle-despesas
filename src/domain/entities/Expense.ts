@@ -19,6 +19,10 @@ export interface CreateExpenseInput {
   readonly category: ExpenseCategory;
 }
 
+export interface UpdateExpenseInput extends CreateExpenseInput {
+  readonly id: string;
+}
+
 export interface ExpenseFormValues {
   readonly description: string;
   readonly amount: string;

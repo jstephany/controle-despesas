@@ -74,3 +74,10 @@ export function formatCentsToBRL(amountCents: number): string {
 
   return `${isNegative ? '-' : ''}R$ ${formattedReais},${cents}`;
 }
+
+export function formatCentsToInputValue(amountCents: number): string {
+  const absCents = Math.abs(Math.trunc(amountCents));
+  const reais = Math.floor(absCents / 100);
+  const cents = String(absCents % 100).padStart(2, '0');
+  return `${reais},${cents}`;
+}

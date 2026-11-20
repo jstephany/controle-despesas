@@ -14,6 +14,7 @@ import type {
   CreateExpenseInput,
   Expense,
   MonthPeriod,
+  UpdateExpenseInput,
 } from '@/domain/entities/Expense';
 import type { IExpenseRepository } from '@/domain/repositories/ExpenseRepository';
 import {
@@ -41,7 +42,9 @@ export interface ExpensesContextValue {
   readonly goToPreviousMonth: () => void;
   readonly goToNextMonth: () => void;
   readonly goToCurrentMonth: () => void;
+  readonly getExpenseById: (id: string) => Promise<Expense | null>;
   readonly addExpense: (input: CreateExpenseInput) => Promise<Expense>;
+  readonly updateExpense: (input: UpdateExpenseInput) => Promise<Expense>;
   readonly deleteExpense: (id: string) => Promise<void>;
   readonly refresh: () => Promise<void>;
 }
@@ -78,7 +81,9 @@ export function ExpensesProvider({
   const activeRepository = injectedRepository ?? sqliteRepository;
   const isInitializing = !injectedRepository && !initDone;
   const currentPeriodKey = getPeriodKey(selectedPeriod);
-  const isLoading = isInitializing || (activeRepository !== null && loadedPeriodKey !== currentPeriodKey);
+  const isLoading =
+    isInitializing ||
+    (activeRepository !== null && loadedPeriodKey !== currentPeriodKey);
 
   useEffect(() => {
     if (injectedRepository) {
@@ -151,6 +156,20 @@ export function ExpensesProvider({
     setSelectedPeriod(getCurrentMonthPeriod());
   }, []);
 
+  const getExpenseById = useCallback(
+    async (id: string): Promise<Expense | null> => {
+      const inMemory = expenses.find((item) => item.id === id);
+      if (inMemory) {
+        return inMemory;
+      }
+      if (!activeRepository) {
+        return null;
+      }
+      return activeRepository.findById(id);
+    },
+    [expenses, activeRepository]
+  );
+
   const addExpense = useCallback(
     async (input: CreateExpenseInput): Promise<Expense> => {
       if (!activeRepository) {
@@ -171,6 +190,35 @@ export function ExpensesProvider({
       }
 
       return created;
+    },
+    [activeRepository, selectedPeriod]
+  );
+
+  const updateExpense = useCallback(
+    async (input: UpdateExpenseInput): Promise<Expense> => {
+      if (!activeRepository) {
+        throw new Error('Banco de dados local ainda não está pronto.');
+      }
+
+      const updated = await activeRepository.update(input);
+      const expensePeriod = getMonthPeriodFromIsoDate(updated.date);
+
+      if (
+        expensePeriod &&
+        (expensePeriod.year !== selectedPeriod.year ||
+          expensePeriod.month !== selectedPeriod.month)
+      ) {
+        setExpenses((prev) => prev.filter((item) => item.id !== updated.id));
+        setSelectedPeriod(expensePeriod);
+      } else {
+        setExpenses((prev) =>
+          sortExpensesChronologically(
+            prev.map((item) => (item.id === updated.id ? updated : item))
+          )
+        );
+      }
+
+      return updated;
     },
     [activeRepository, selectedPeriod]
   );
@@ -235,7 +283,9 @@ export function ExpensesProvider({
       goToPreviousMonth,
       goToNextMonth,
       goToCurrentMonth,
+      getExpenseById,
       addExpense,
+      updateExpense,
       deleteExpense,
       refresh,
     }),
@@ -251,7 +301,9 @@ export function ExpensesProvider({
       goToPreviousMonth,
       goToNextMonth,
       goToCurrentMonth,
+      getExpenseById,
       addExpense,
+      updateExpense,
       deleteExpense,
       refresh,
     ]

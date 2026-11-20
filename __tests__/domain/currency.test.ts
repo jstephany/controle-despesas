@@ -1,4 +1,8 @@
-import { formatCentsToBRL, parseCurrencyToCents } from '@/domain/services/currency';
+import {
+  formatCentsToBRL,
+  formatCentsToInputValue,
+  parseCurrencyToCents,
+} from '@/domain/services/currency';
 
 describe('currency service', () => {
   describe('parseCurrencyToCents', () => {
@@ -46,6 +50,16 @@ describe('currency service', () => {
 
     it('formata valores negativos de forma consistente', () => {
       expect(formatCentsToBRL(-1050)).toBe('-R$ 10,50');
+    });
+  });
+
+  describe('formatCentsToInputValue', () => {
+    it('formata centavos para texto editável com vírgula decimal compatível com o parser', () => {
+      expect(formatCentsToInputValue(1)).toBe('0,01');
+      expect(formatCentsToInputValue(50)).toBe('0,50');
+      expect(formatCentsToInputValue(1250)).toBe('12,50');
+      expect(formatCentsToInputValue(125090)).toBe('1250,90');
+      expect(parseCurrencyToCents(formatCentsToInputValue(125090))).toBe(125090);
     });
   });
 });

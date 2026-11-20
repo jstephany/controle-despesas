@@ -1,6 +1,6 @@
 import { Feather } from '@expo/vector-icons';
 import { router } from 'expo-router';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -16,6 +16,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import type { ExpenseCategory } from '@/domain/entities/Category';
+import { formatCentsToInputValue } from '@/domain/services/currency';
 import {
   MAX_DESCRIPTION_LENGTH,
   validateExpenseInput,
@@ -32,6 +33,10 @@ import { FormFieldError } from '../components/FormFieldError';
 import { useExpenses } from '../hooks/useExpenses';
 import { theme } from '../theme/theme';
 
+interface NewExpenseScreenProps {
+  readonly expenseId?: string;
+}
+
 function formatTypingDateBR(raw: string): string {
   const digits = raw.replace(/\D/g, '').slice(0, 8);
   if (digits.length <= 2) {
@@ -43,18 +48,66 @@ function formatTypingDateBR(raw: string): string {
   return `${digits.slice(0, 2)}/${digits.slice(2, 4)}/${digits.slice(4)}`;
 }
 
-export function NewExpenseScreen() {
-  const { addExpense } = useExpenses();
+export function NewExpenseScreen({ expenseId }: NewExpenseScreenProps) {
+  const { expenses, getExpenseById, addExpense, updateExpense } = useExpenses();
+
+  const isEditMode = Boolean(expenseId);
+  const existingInMemory = expenseId
+    ? expenses.find((item) => item.id === expenseId) ?? null
+    : null;
 
   const todayBR = formatIsoDateToBR(getTodayIsoDate());
   const yesterdayBR = formatIsoDateToBR(getRelativeIsoDate(-1));
 
-  const [amount, setAmount] = useState('');
-  const [description, setDescription] = useState('');
-  const [date, setDate] = useState(todayBR);
-  const [category, setCategory] = useState<ExpenseCategory>('alimentacao');
+  const [amount, setAmount] = useState(() =>
+    existingInMemory ? formatCentsToInputValue(existingInMemory.amountCents) : ''
+  );
+  const [description, setDescription] = useState(
+    () => existingInMemory?.description ?? ''
+  );
+  const [date, setDate] = useState(() =>
+    existingInMemory ? formatIsoDateToBR(existingInMemory.date) : todayBR
+  );
+  const [category, setCategory] = useState<ExpenseCategory>(
+    () => existingInMemory?.category ?? 'alimentacao'
+  );
   const [errors, setErrors] = useState<ExpenseValidationErrors>({});
+  const [isLoadingInitial, setIsLoadingInitial] = useState(
+    () => isEditMode && !existingInMemory
+  );
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  useEffect(() => {
+    if (!expenseId || existingInMemory) {
+      return;
+    }
+
+    let cancelled = false;
+    getExpenseById(expenseId)
+      .then((found) => {
+        if (cancelled) return;
+        if (!found) {
+          Alert.alert('Despesa não encontrada', 'Este lançamento não existe mais.');
+          router.back();
+          return;
+        }
+        setAmount(formatCentsToInputValue(found.amountCents));
+        setDescription(found.description);
+        setDate(formatIsoDateToBR(found.date));
+        setCategory(found.category);
+        setIsLoadingInitial(false);
+      })
+      .catch(() => {
+        if (cancelled) return;
+        setIsLoadingInitial(false);
+        Alert.alert('Erro', 'Não foi possível carregar os dados da despesa.');
+        router.back();
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [expenseId, existingInMemory, getExpenseById]);
 
   const clearFieldError = (field: keyof ExpenseValidationErrors) => {
     setErrors((prev) => {
@@ -111,11 +164,18 @@ export function NewExpenseScreen() {
     setIsSubmitting(true);
 
     try {
-      await addExpense(validation.data);
+      if (expenseId) {
+        await updateExpense({
+          id: expenseId,
+          ...validation.data,
+        });
+      } else {
+        await addExpense(validation.data);
+      }
       router.back();
     } catch (err) {
       Alert.alert(
-        'Erro ao salvar',
+        isEditMode ? 'Erro ao atualizar' : 'Erro ao salvar',
         err instanceof Error
           ? err.message
           : 'Não foi possível salvar a despesa localmente.'
@@ -145,143 +205,162 @@ export function NewExpenseScreen() {
             <Feather name="arrow-left" size={18} color={theme.colors.textPrimary} />
           </Pressable>
 
-          <Text style={styles.headerTitle}>Nova despesa</Text>
+          <Text style={styles.headerTitle}>
+            {isEditMode ? 'Editar despesa' : 'Nova despesa'}
+          </Text>
           <View style={styles.headerSpacer} />
         </View>
 
-        <ScrollView
-          style={styles.flex}
-          contentContainerStyle={styles.scrollContent}
-          keyboardShouldPersistTaps="handled"
-          showsVerticalScrollIndicator={false}
-        >
-          <View style={styles.fieldGroup}>
-            <Text style={styles.label}>Valor</Text>
-            <View
-              style={[
-                styles.amountCard,
-                errors.amount ? styles.inputErrorBorder : null,
-              ]}
+        {isLoadingInitial ? (
+          <View style={styles.loadingState}>
+            <ActivityIndicator size="small" color={theme.colors.ink} />
+            <Text style={styles.loadingText}>Carregando lançamento...</Text>
+          </View>
+        ) : (
+          <>
+            <ScrollView
+              style={styles.flex}
+              contentContainerStyle={styles.scrollContent}
+              keyboardShouldPersistTaps="handled"
+              showsVerticalScrollIndicator={false}
             >
-              <Text style={styles.currencyPrefix}>R$</Text>
-              <TextInput
-                value={amount}
-                onChangeText={handleAmountChange}
-                placeholder="0,00"
-                placeholderTextColor={theme.colors.textSecondary}
-                keyboardType="decimal-pad"
-                returnKeyType="next"
-                style={styles.amountInput}
-                accessibilityLabel="Valor da despesa em reais"
-              />
-            </View>
-            <FormFieldError message={errors.amount} />
-          </View>
-
-          <View style={styles.fieldGroup}>
-            <View style={styles.labelRow}>
-              <Text style={styles.label}>Descrição</Text>
-              <Text style={styles.charCount}>
-                {description.trim().length}/{MAX_DESCRIPTION_LENGTH}
-              </Text>
-            </View>
-            <TextInput
-              value={description}
-              onChangeText={handleDescriptionChange}
-              placeholder="Ex.: Supermercado, Almoço, Uber..."
-              placeholderTextColor={theme.colors.textSecondary}
-              maxLength={MAX_DESCRIPTION_LENGTH}
-              returnKeyType="done"
-              style={[
-                styles.textInput,
-                errors.description ? styles.inputErrorBorder : null,
-              ]}
-              accessibilityLabel="Descrição da despesa"
-            />
-            <FormFieldError message={errors.description} />
-          </View>
-
-          <View style={styles.fieldGroup}>
-            <View style={styles.labelRow}>
-              <Text style={styles.label}>Data</Text>
-              <View style={styles.shortcutsRow}>
-                <Pressable
-                  onPress={() => handleSelectDateShortcut(todayBR)}
+              <View style={styles.fieldGroup}>
+                <Text style={styles.label}>Valor</Text>
+                <View
                   style={[
-                    styles.shortcutPill,
-                    date === todayBR && styles.shortcutPillActive,
+                    styles.amountCard,
+                    errors.amount ? styles.inputErrorBorder : null,
                   ]}
                 >
-                  <Text style={styles.shortcutText}>Hoje</Text>
-                </Pressable>
-                <Pressable
-                  onPress={() => handleSelectDateShortcut(yesterdayBR)}
-                  style={[
-                    styles.shortcutPill,
-                    date === yesterdayBR && styles.shortcutPillActive,
-                  ]}
-                >
-                  <Text style={styles.shortcutText}>Ontem</Text>
-                </Pressable>
+                  <Text style={styles.currencyPrefix}>R$</Text>
+                  <TextInput
+                    value={amount}
+                    onChangeText={handleAmountChange}
+                    placeholder="0,00"
+                    placeholderTextColor={theme.colors.textSecondary}
+                    keyboardType="decimal-pad"
+                    returnKeyType="next"
+                    style={styles.amountInput}
+                    accessibilityLabel="Valor da despesa em reais"
+                  />
+                </View>
+                <FormFieldError message={errors.amount} />
               </View>
-            </View>
-            <View
-              style={[
-                styles.dateInputRow,
-                errors.date ? styles.inputErrorBorder : null,
-              ]}
-            >
-              <Feather
-                name="calendar"
-                size={16}
-                color={theme.colors.textSecondary}
-              />
-              <TextInput
-                value={date}
-                onChangeText={handleDateChange}
-                placeholder="DD/MM/AAAA"
-                placeholderTextColor={theme.colors.textSecondary}
-                keyboardType="numbers-and-punctuation"
-                maxLength={10}
-                style={styles.dateInput}
-                accessibilityLabel="Data da despesa no formato DD/MM/AAAA"
-              />
-            </View>
-            <FormFieldError message={errors.date} />
-          </View>
 
-          <View style={styles.fieldGroup}>
-            <Text style={styles.label}>Categoria</Text>
-            <CategoryPicker
-              selectedCategory={category}
-              onSelect={handleSelectCategory}
-            />
-            <FormFieldError message={errors.category} />
-          </View>
-        </ScrollView>
+              <View style={styles.fieldGroup}>
+                <View style={styles.labelRow}>
+                  <Text style={styles.label}>Descrição</Text>
+                  <Text style={styles.charCount}>
+                    {description.trim().length}/{MAX_DESCRIPTION_LENGTH}
+                  </Text>
+                </View>
+                <TextInput
+                  value={description}
+                  onChangeText={handleDescriptionChange}
+                  placeholder="Ex.: Supermercado, Almoço, Uber..."
+                  placeholderTextColor={theme.colors.textSecondary}
+                  maxLength={MAX_DESCRIPTION_LENGTH}
+                  returnKeyType="done"
+                  style={[
+                    styles.textInput,
+                    errors.description ? styles.inputErrorBorder : null,
+                  ]}
+                  accessibilityLabel="Descrição da despesa"
+                />
+                <FormFieldError message={errors.description} />
+              </View>
 
-        <View style={styles.footer}>
-          <Pressable
-            onPress={() => void handleSubmit()}
-            disabled={isSubmitting}
-            accessibilityRole="button"
-            accessibilityLabel="Salvar despesa"
-            style={({ pressed }) => [
-              styles.submitButton,
-              isSubmitting && styles.submitButtonDisabled,
-              pressed && !isSubmitting && styles.submitButtonPressed,
-            ]}
-          >
-            {isSubmitting ? (
-              <ActivityIndicator size="small" color={theme.colors.textOnInk} />
-            ) : (
-              <>
-                <Feather name="check" size={18} color={theme.colors.textOnInk} />
-                <Text style={styles.submitLabel}>Salvar despesa</Text>
-              </>
-            )}
-          </Pressable>
-        </View>
+              <View style={styles.fieldGroup}>
+                <View style={styles.labelRow}>
+                  <Text style={styles.label}>Data</Text>
+                  <View style={styles.shortcutsRow}>
+                    <Pressable
+                      onPress={() => handleSelectDateShortcut(todayBR)}
+                      style={[
+                        styles.shortcutPill,
+                        date === todayBR && styles.shortcutPillActive,
+                      ]}
+                    >
+                      <Text style={styles.shortcutText}>Hoje</Text>
+                    </Pressable>
+                    <Pressable
+                      onPress={() => handleSelectDateShortcut(yesterdayBR)}
+                      style={[
+                        styles.shortcutPill,
+                        date === yesterdayBR && styles.shortcutPillActive,
+                      ]}
+                    >
+                      <Text style={styles.shortcutText}>Ontem</Text>
+                    </Pressable>
+                  </View>
+                </View>
+                <View
+                  style={[
+                    styles.dateInputRow,
+                    errors.date ? styles.inputErrorBorder : null,
+                  ]}
+                >
+                  <Feather
+                    name="calendar"
+                    size={16}
+                    color={theme.colors.textSecondary}
+                  />
+                  <TextInput
+                    value={date}
+                    onChangeText={handleDateChange}
+                    placeholder="DD/MM/AAAA"
+                    placeholderTextColor={theme.colors.textSecondary}
+                    keyboardType="numbers-and-punctuation"
+                    maxLength={10}
+                    style={styles.dateInput}
+                    accessibilityLabel="Data da despesa no formato DD/MM/AAAA"
+                  />
+                </View>
+                <FormFieldError message={errors.date} />
+              </View>
+
+              <View style={styles.fieldGroup}>
+                <Text style={styles.label}>Categoria</Text>
+                <CategoryPicker
+                  selectedCategory={category}
+                  onSelect={handleSelectCategory}
+                />
+                <FormFieldError message={errors.category} />
+              </View>
+            </ScrollView>
+
+            <View style={styles.footer}>
+              <Pressable
+                onPress={() => void handleSubmit()}
+                disabled={isSubmitting}
+                accessibilityRole="button"
+                accessibilityLabel={
+                  isEditMode ? 'Salvar alterações' : 'Salvar despesa'
+                }
+                style={({ pressed }) => [
+                  styles.submitButton,
+                  isSubmitting && styles.submitButtonDisabled,
+                  pressed && !isSubmitting && styles.submitButtonPressed,
+                ]}
+              >
+                {isSubmitting ? (
+                  <ActivityIndicator size="small" color={theme.colors.textOnInk} />
+                ) : (
+                  <>
+                    <Feather
+                      name="check"
+                      size={18}
+                      color={theme.colors.textOnInk}
+                    />
+                    <Text style={styles.submitLabel}>
+                      {isEditMode ? 'Salvar alterações' : 'Salvar despesa'}
+                    </Text>
+                  </>
+                )}
+              </Pressable>
+            </View>
+          </>
+        )}
       </KeyboardAvoidingView>
     </SafeAreaView>
   );
@@ -324,6 +403,16 @@ const styles = StyleSheet.create({
   },
   headerSpacer: {
     width: 40,
+  },
+  loadingState: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: theme.spacing.sm,
+  },
+  loadingText: {
+    ...theme.typography.caption,
+    color: theme.colors.textSecondary,
   },
   scrollContent: {
     paddingHorizontal: theme.spacing.xl,

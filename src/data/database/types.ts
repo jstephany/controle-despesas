@@ -8,6 +8,6 @@ import type { SQLiteBindParams, SQLiteRunResult } from 'expo-sqlite';
 export interface SQLiteExecutor {
   execAsync(source: string): Promise<void>;
   runAsync(source: string, params: SQLiteBindParams): Promise<SQLiteRunResult>;
-  getFirstAsync<T>(source: string): Promise<T | null>;
+  getFirstAsync<T>(source: string, params?: SQLiteBindParams): Promise<T | null>;
   getAllAsync<T>(source: string, params: SQLiteBindParams): Promise<T[]>;
 }

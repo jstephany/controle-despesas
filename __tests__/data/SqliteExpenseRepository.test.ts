@@ -11,7 +11,13 @@ function createInMemorySqliteStub() {
 
   const db: SQLiteExecutor = {
     execAsync: jest.fn(async () => undefined),
-    async getFirstAsync<T>(): Promise<T | null> {
+    async getFirstAsync<T>(sql: string, params?: SQLiteBindParams): Promise<T | null> {
+      const values = Array.isArray(params) ? params : [];
+      if (sql.includes('WHERE id = ?')) {
+        const targetId = String(values[0]);
+        const found = rows.find((row) => row.id === targetId) ?? null;
+        return found as T | null;
+      }
       return null;
     },
     runAsync: jest.fn(async (sql: string, params: SQLiteBindParams) => {
@@ -28,6 +34,22 @@ function createInMemorySqliteStub() {
           created_at: String(values[5]),
         });
         return { changes: 1, lastInsertRowId: rows.length };
+      }
+
+      if (sql.trim().startsWith('UPDATE expenses')) {
+        const targetId = String(values[4]);
+        const index = rows.findIndex((row) => row.id === targetId);
+        if (index === -1) {
+          return { changes: 0, lastInsertRowId: 0 };
+        }
+        rows[index] = {
+          ...rows[index],
+          description: String(values[0]),
+          amount_cents: Number(values[1]),
+          date: String(values[2]),
+          category: String(values[3]),
+        };
+        return { changes: 1, lastInsertRowId: 0 };
       }
 
       if (sql.trim().startsWith('DELETE FROM expenses')) {
@@ -202,5 +224,104 @@ describe('SqliteExpenseRepository', () => {
 
     await expect(repository.deleteById('   ')).rejects.toThrow();
     expect(db.runAsync).not.toHaveBeenCalled();
+  });
+
+  it('busca despesa por id e retorna null quando inexistente', async () => {
+    const { db } = createInMemorySqliteStub();
+    const repository = new SqliteExpenseRepository(db);
+
+    const created = await repository.create({
+      description: 'Livro',
+      amountCents: 6500,
+      date: '2026-11-12',
+      category: 'educacao',
+    });
+
+    await expect(repository.findById(created.id)).resolves.toEqual(created);
+    await expect(repository.findById('exp_inexistente')).resolves.toBeNull();
+  });
+
+  it('atualiza uma despesa existente preservando createdAt e refletindo nas consultas mensais', async () => {
+    const { db, runCalls } = createInMemorySqliteStub();
+    const repository = new SqliteExpenseRepository(db);
+
+    const created = await repository.create({
+      description: 'Almoço',
+      amountCents: 3500,
+      date: '2026-11-10',
+      category: 'alimentacao',
+    });
+
+    const updated = await repository.update({
+      id: created.id,
+      description: '  Almoço executivo  ',
+      amountCents: 4890,
+      date: '2026-12-02',
+      category: 'lazer',
+    });
+
+    expect(updated).toEqual({
+      id: created.id,
+      description: 'Almoço executivo',
+      amountCents: 4890,
+      date: '2026-12-02',
+      category: 'lazer',
+      createdAt: created.createdAt,
+    });
+
+    const updateCall = runCalls.find((call) => call.sql.includes('UPDATE expenses'));
+    expect(updateCall?.params).toEqual([
+      'Almoço executivo',
+      4890,
+      '2026-12-02',
+      'lazer',
+      created.id,
+    ]);
+
+    expect(await repository.findByMonth({ year: 2026, month: 11 })).toEqual([]);
+    const decExpenses = await repository.findByMonth({ year: 2026, month: 12 });
+    expect(decExpenses).toEqual([updated]);
+  });
+
+  it('rejeita atualização quando despesa não existe ou dados são inválidos', async () => {
+    const { db } = createInMemorySqliteStub();
+    const repository = new SqliteExpenseRepository(db);
+
+    const created = await repository.create({
+      description: 'Café',
+      amountCents: 900,
+      date: '2026-11-10',
+      category: 'alimentacao',
+    });
+
+    await expect(
+      repository.update({
+        id: 'exp_nao_existe',
+        description: 'Café',
+        amountCents: 900,
+        date: '2026-11-10',
+        category: 'alimentacao',
+      })
+    ).rejects.toThrow();
+
+    await expect(
+      repository.update({
+        id: created.id,
+        description: 'Café',
+        amountCents: 0,
+        date: '2026-11-10',
+        category: 'alimentacao',
+      })
+    ).rejects.toThrow();
+
+    await expect(
+      repository.update({
+        id: created.id,
+        description: '   ',
+        amountCents: 900,
+        date: '2026-11-10',
+        category: 'alimentacao',
+      })
+    ).rejects.toThrow();
   });
 });
