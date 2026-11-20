@@ -333,10 +333,6 @@ export function HomeScreen() {
       <View style={styles.container}>
         <View style={[styles.topHeader, centeredContainerStyle]}>
           <View style={styles.headerTitleBlock}>
-            <View style={styles.offlineBadge}>
-              <View style={styles.offlineDot} />
-              <Text style={styles.offlineText}>Offline-first</Text>
-            </View>
             <Text
               style={[styles.title, isCompact && styles.titleCompact]}
               numberOfLines={1}
@@ -418,22 +414,6 @@ const styles = StyleSheet.create({
   headerTitleBlock: {
     flex: 1,
     minWidth: 0,
-  },
-  offlineBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    marginBottom: 4,
-  },
-  offlineDot: {
-    width: 7,
-    height: 7,
-    borderRadius: theme.radius.pill,
-    backgroundColor: theme.colors.accentSage,
-  },
-  offlineText: {
-    ...theme.typography.micro,
-    color: theme.colors.textSecondary,
   },
   title: {
     ...theme.typography.title,

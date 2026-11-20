@@ -183,7 +183,6 @@ export function AnalyticsScreen() {
       >
         <View style={styles.topHeader}>
           <View style={styles.headerTitleBlock}>
-            <Text style={styles.eyebrow}>Relatórios offline</Text>
             <Text
               style={[styles.title, isCompact && styles.titleCompact]}
               numberOfLines={1}
@@ -446,11 +445,6 @@ const styles = StyleSheet.create({
   headerTitleBlock: {
     flex: 1,
     minWidth: 0,
-  },
-  eyebrow: {
-    ...theme.typography.micro,
-    color: theme.colors.textSecondary,
-    marginBottom: 4,
   },
   title: {
     ...theme.typography.title,
