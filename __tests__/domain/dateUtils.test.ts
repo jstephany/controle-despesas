@@ -3,6 +3,7 @@ import {
   formatMonthPeriodKey,
   formatMonthPeriodLabel,
   getCurrentMonthPeriod,
+  getDefaultExpenseDateForPeriod,
   getMonthDateRange,
   getMonthPeriodFromIsoDate,
   getNextMonth,
@@ -99,6 +100,20 @@ describe('dateUtils', () => {
       expect(isValidMonthKey('2026-13')).toBe(false);
       expect(isValidMonthKey('2026-00')).toBe(false);
       expect(isValidMonthKey('11/2026')).toBe(false);
+    });
+
+    it('define data padrão contextual como hoje no mês atual e dia 01 em outros meses', () => {
+      const ref = new Date(2026, 10, 20, 12, 0, 0); // 20/11/2026
+
+      expect(getDefaultExpenseDateForPeriod({ year: 2026, month: 11 }, ref)).toBe(
+        '2026-11-20'
+      );
+      expect(getDefaultExpenseDateForPeriod({ year: 2026, month: 9 }, ref)).toBe(
+        '2026-09-01'
+      );
+      expect(getDefaultExpenseDateForPeriod({ year: 2027, month: 1 }, ref)).toBe(
+        '2027-01-01'
+      );
     });
   });
 });

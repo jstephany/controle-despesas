@@ -23,102 +23,121 @@ export function ExpenseItem({
   const visual = getCategoryVisual(expense.category);
 
   return (
-    <View style={styles.card}>
-      <Pressable
-        onPress={() => onPress(expense)}
-        accessibilityRole="button"
-        accessibilityLabel={`Editar despesa ${expense.description}`}
-        style={({ pressed }) => [
-          styles.mainTouchable,
-          pressed && styles.mainTouchablePressed,
-        ]}
-      >
-        <View style={[styles.iconBadge, { backgroundColor: visual.fill }]}>
-          <Feather name={visual.icon} size={18} color={theme.colors.textPrimary} />
-        </View>
+    <Pressable
+      onPress={() => onPress(expense)}
+      accessibilityRole="button"
+      accessibilityLabel={`Editar despesa ${expense.description}`}
+      style={({ pressed }) => [styles.card, pressed && styles.cardPressed]}
+    >
+      <View style={[styles.iconBadge, { backgroundColor: visual.fill }]}>
+        <Feather name={visual.icon} size={17} color={theme.colors.textPrimary} />
+      </View>
 
-        <View style={styles.content}>
-          <Text style={styles.description} numberOfLines={1}>
+      <View style={styles.body}>
+        <View style={styles.topRow}>
+          <Text style={styles.description} numberOfLines={2}>
             {expense.description}
           </Text>
+          <Text style={styles.amount} numberOfLines={1}>
+            {formatCentsToBRL(expense.amountCents)}
+          </Text>
+        </View>
+
+        <View style={styles.bottomRow}>
           <View style={styles.metaRow}>
-            <Text style={styles.metaText} numberOfLines={1}>
-              {categoryMeta.label}
-            </Text>
+            <Text style={styles.categoryText}>{categoryMeta.label}</Text>
             <View style={styles.metaDot} />
             <Text style={styles.metaDate}>{formatIsoDateToBR(expense.date)}</Text>
           </View>
+
+          <Pressable
+            onPress={(event) => {
+              event.stopPropagation();
+              onRequestDelete(expense);
+            }}
+            hitSlop={10}
+            accessibilityRole="button"
+            accessibilityLabel={`Excluir despesa ${expense.description}`}
+            style={({ pressed }) => [
+              styles.deleteButton,
+              pressed && styles.deleteButtonPressed,
+            ]}
+          >
+            <Feather name="trash-2" size={14} color={theme.colors.danger} />
+          </Pressable>
         </View>
-
-        <Text style={styles.amount} numberOfLines={1}>
-          {formatCentsToBRL(expense.amountCents)}
-        </Text>
-      </Pressable>
-
-      <Pressable
-        onPress={() => onRequestDelete(expense)}
-        hitSlop={8}
-        accessibilityRole="button"
-        accessibilityLabel={`Excluir despesa ${expense.description}`}
-        style={({ pressed }) => [
-          styles.deleteButton,
-          pressed && styles.deleteButtonPressed,
-        ]}
-      >
-        <Feather name="trash-2" size={15} color={theme.colors.danger} />
-      </Pressable>
-    </View>
+      </View>
+    </Pressable>
   );
 }
 
 const styles = StyleSheet.create({
   card: {
     flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'flex-start',
     backgroundColor: theme.colors.surface,
     borderWidth: 1,
     borderColor: theme.colors.border,
     borderRadius: theme.radius.item,
-    paddingLeft: 14,
-    paddingRight: 12,
-    paddingVertical: 12,
-    gap: 10,
-  },
-  mainTouchable: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
+    paddingHorizontal: 14,
+    paddingVertical: 13,
     gap: 12,
   },
-  mainTouchablePressed: {
-    opacity: 0.72,
+  cardPressed: {
+    opacity: 0.78,
   },
   iconBadge: {
-    width: 44,
-    height: 44,
+    width: 40,
+    height: 40,
     borderRadius: theme.radius.pill,
     alignItems: 'center',
     justifyContent: 'center',
+    flexShrink: 0,
+    marginTop: 2,
   },
-  content: {
+  body: {
     flex: 1,
-    gap: 3,
+    gap: 7,
+  },
+  topRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    justifyContent: 'space-between',
+    gap: 10,
   },
   description: {
     ...theme.typography.body,
     fontWeight: '700',
     color: theme.colors.textPrimary,
     letterSpacing: -0.2,
+    flex: 1,
+    lineHeight: 20,
   },
-  metaRow: {
+  amount: {
+    ...theme.typography.body,
+    ...theme.typography.tabularNums,
+    fontWeight: '700',
+    color: theme.colors.textPrimary,
+    flexShrink: 0,
+    textAlign: 'right',
+  },
+  bottomRow: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 8,
+  },
+  metaRow: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    flexWrap: 'wrap',
     gap: 6,
   },
-  metaText: {
+  categoryText: {
     ...theme.typography.caption,
+    fontWeight: '600',
     color: theme.colors.textSecondary,
-    flexShrink: 1,
   },
   metaDot: {
     width: 3,
@@ -132,22 +151,17 @@ const styles = StyleSheet.create({
     ...theme.typography.tabularNums,
     color: theme.colors.textSecondary,
   },
-  amount: {
-    ...theme.typography.body,
-    ...theme.typography.tabularNums,
-    fontWeight: '700',
-    color: theme.colors.textPrimary,
-  },
   deleteButton: {
-    width: 32,
-    height: 32,
+    width: 28,
+    height: 28,
     borderRadius: theme.radius.pill,
     backgroundColor: theme.colors.dangerSurface,
     alignItems: 'center',
     justifyContent: 'center',
+    flexShrink: 0,
   },
   deleteButtonPressed: {
     opacity: 0.7,
-    transform: [{ scale: 0.94 }],
+    transform: [{ scale: 0.92 }],
   },
 });

@@ -154,3 +154,14 @@ export function formatMonthPeriodKey(period: MonthPeriod): string {
 export function isValidMonthKey(value: string): boolean {
   return MONTH_KEY_PATTERN.test(value);
 }
+
+export function getDefaultExpenseDateForPeriod(
+  period: MonthPeriod,
+  referenceDate: Date = new Date()
+): string {
+  const current = getCurrentMonthPeriod(referenceDate);
+  if (period.year === current.year && period.month === current.month) {
+    return getTodayIsoDate(referenceDate);
+  }
+  return `${period.year}-${pad2(period.month)}-01`;
+}

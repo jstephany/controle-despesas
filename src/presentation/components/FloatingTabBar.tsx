@@ -2,6 +2,7 @@ import { Feather } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
+import { useExpenses } from '../hooks/useExpenses';
 import { theme } from '../theme/theme';
 
 interface TabRoute {
@@ -33,12 +34,28 @@ export function FloatingTabBar({
   navigateToTab,
   emitter,
 }: FloatingTabBarProps) {
+  const { selectedPeriod } = useExpenses();
+
   const homeRoute = state.routes.find((route) => route.name === 'index');
   const analyticsRoute = state.routes.find((route) => route.name === 'analytics');
 
   const activeRouteName = state.routes[state.index]?.name ?? 'index';
   const isHomeActive = activeRouteName === 'index';
   const isAnalyticsActive = activeRouteName === 'analytics';
+
+  const handleOpenNewExpense = () => {
+    if (isHomeActive) {
+      router.push({
+        pathname: '/new-expense',
+        params: {
+          year: String(selectedPeriod.year),
+          month: String(selectedPeriod.month),
+        },
+      });
+      return;
+    }
+    router.push('/new-expense');
+  };
 
   const handleNavigateTab = (route: TabRoute | undefined, isFocused: boolean) => {
     if (!route) return;
@@ -92,7 +109,7 @@ export function FloatingTabBar({
 
         <View style={styles.centerSlot}>
           <Pressable
-            onPress={() => router.push('/new-expense')}
+            onPress={handleOpenNewExpense}
             accessibilityRole="button"
             accessibilityLabel="Adicionar nova despesa"
             style={({ pressed }) => [

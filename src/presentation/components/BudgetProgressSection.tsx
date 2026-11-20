@@ -11,13 +11,18 @@ interface BudgetProgressSectionProps {
   readonly onPressConfigure: () => void;
 }
 
+const SECTION_MIN_HEIGHT = 132;
+
 export function BudgetProgressSection({
   evaluation,
   onPressConfigure,
 }: BudgetProgressSectionProps) {
   if (!evaluation) {
     return (
-      <View style={styles.emptyWrapper}>
+      <View style={styles.emptyCard}>
+        <Text style={styles.emptyCaption}>
+          Nenhum limite definido para este mês
+        </Text>
         <Pressable
           onPress={onPressConfigure}
           accessibilityRole="button"
@@ -125,20 +130,34 @@ export function BudgetProgressSection({
 }
 
 const styles = StyleSheet.create({
-  emptyWrapper: {
+  emptyCard: {
     marginTop: theme.spacing.md,
+    minHeight: SECTION_MIN_HEIGHT,
+    backgroundColor: theme.colors.surface,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    borderRadius: theme.radius.item,
+    paddingHorizontal: theme.spacing.lg,
+    paddingVertical: 14,
     alignItems: 'center',
+    justifyContent: 'center',
+    gap: 10,
+  },
+  emptyCaption: {
+    ...theme.typography.caption,
+    color: theme.colors.textSecondary,
+    textAlign: 'center',
   },
   defineButton: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
-    backgroundColor: theme.colors.surface,
+    backgroundColor: theme.colors.surfaceMuted,
     borderWidth: 1,
-    borderColor: theme.colors.border,
+    borderColor: theme.colors.borderStrong,
     borderRadius: theme.radius.pill,
     paddingHorizontal: 16,
-    paddingVertical: 10,
+    paddingVertical: 9,
   },
   defineButtonText: {
     ...theme.typography.caption,
@@ -151,13 +170,15 @@ const styles = StyleSheet.create({
   },
   card: {
     marginTop: theme.spacing.md,
+    minHeight: SECTION_MIN_HEIGHT,
     backgroundColor: theme.colors.surface,
     borderWidth: 1,
     borderColor: theme.colors.border,
     borderRadius: theme.radius.item,
     paddingHorizontal: theme.spacing.lg,
     paddingVertical: 14,
-    gap: 10,
+    justifyContent: 'center',
+    gap: 9,
   },
   headerRow: {
     flexDirection: 'row',
@@ -227,7 +248,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#F8EAC0',
     borderRadius: theme.radius.sm,
     paddingHorizontal: 10,
-    paddingVertical: 7,
+    paddingVertical: 6,
   },
   warningAlertText: {
     ...theme.typography.caption,
@@ -244,7 +265,7 @@ const styles = StyleSheet.create({
     backgroundColor: theme.colors.dangerSurface,
     borderRadius: theme.radius.sm,
     paddingHorizontal: 10,
-    paddingVertical: 8,
+    paddingVertical: 7,
   },
   exceededAlertText: {
     ...theme.typography.caption,

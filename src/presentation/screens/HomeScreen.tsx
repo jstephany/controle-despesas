@@ -24,7 +24,6 @@ import { formatCentsToBRL } from '@/domain/services/currency';
 import { filterExpensesByCategory } from '@/domain/services/expenseCalculations';
 import {
   formatMonthPeriodLabel,
-  getCurrentMonthPeriod,
 } from '@/domain/utils/dateUtils';
 
 import { BudgetModal } from '../components/BudgetModal';
@@ -37,7 +36,7 @@ import { MonthSelector } from '../components/MonthSelector';
 import { useExpenses } from '../hooks/useExpenses';
 import { theme } from '../theme/theme';
 
-const TRANSITION_SHIFT_PX = 28;
+const FADE_DURATION_MS = 135;
 
 export function HomeScreen() {
   const {
@@ -65,66 +64,36 @@ export function HomeScreen() {
     useState<ExpenseCategory | null>(null);
   const [isBudgetModalVisible, setIsBudgetModalVisible] = useState(false);
 
-  const [translateX] = useState(() => new Animated.Value(0));
   const [opacity] = useState(() => new Animated.Value(1));
 
-  const animateMonthTransition = useCallback(
-    (direction: 1 | -1, applyPeriodChange: () => void) => {
-      translateX.stopAnimation();
+  const triggerMonthFade = useCallback(
+    (applyPeriodChange: () => void) => {
+      setSelectedChartCategory(null);
+      applyPeriodChange();
+
       opacity.stopAnimation();
-
-      Animated.parallel([
-        Animated.timing(translateX, {
-          toValue: -TRANSITION_SHIFT_PX * direction,
-          duration: 100,
-          easing: Easing.in(Easing.quad),
-          useNativeDriver: true,
-        }),
-        Animated.timing(opacity, {
-          toValue: 0.2,
-          duration: 100,
-          useNativeDriver: true,
-        }),
-      ]).start(() => {
-        setSelectedChartCategory(null);
-        applyPeriodChange();
-
-        translateX.setValue(TRANSITION_SHIFT_PX * direction);
-
-        Animated.parallel([
-          Animated.timing(translateX, {
-            toValue: 0,
-            duration: 190,
-            easing: Easing.out(Easing.cubic),
-            useNativeDriver: true,
-          }),
-          Animated.timing(opacity, {
-            toValue: 1,
-            duration: 190,
-            useNativeDriver: true,
-          }),
-        ]).start();
-      });
+      opacity.setValue(0.45);
+      Animated.timing(opacity, {
+        toValue: 1,
+        duration: FADE_DURATION_MS,
+        easing: Easing.out(Easing.quad),
+        useNativeDriver: true,
+      }).start();
     },
-    [opacity, translateX]
+    [opacity]
   );
 
   const handlePreviousMonth = useCallback(() => {
-    animateMonthTransition(-1, goToPreviousMonth);
-  }, [animateMonthTransition, goToPreviousMonth]);
+    triggerMonthFade(goToPreviousMonth);
+  }, [triggerMonthFade, goToPreviousMonth]);
 
   const handleNextMonth = useCallback(() => {
-    animateMonthTransition(1, goToNextMonth);
-  }, [animateMonthTransition, goToNextMonth]);
+    triggerMonthFade(goToNextMonth);
+  }, [triggerMonthFade, goToNextMonth]);
 
   const handleCurrentMonth = useCallback(() => {
-    const current = getCurrentMonthPeriod();
-    const isForward =
-      current.year > selectedPeriod.year ||
-      (current.year === selectedPeriod.year &&
-        current.month >= selectedPeriod.month);
-    animateMonthTransition(isForward ? 1 : -1, goToCurrentMonth);
-  }, [animateMonthTransition, goToCurrentMonth, selectedPeriod]);
+    triggerMonthFade(goToCurrentMonth);
+  }, [triggerMonthFade, goToCurrentMonth]);
 
   const visibleExpenses = useMemo(
     () => filterExpensesByCategory(expenses, selectedCategoryFilter),
@@ -132,8 +101,14 @@ export function HomeScreen() {
   );
 
   const handleOpenNewExpense = useCallback(() => {
-    router.push('/new-expense');
-  }, []);
+    router.push({
+      pathname: '/new-expense',
+      params: {
+        year: String(selectedPeriod.year),
+        month: String(selectedPeriod.month),
+      },
+    });
+  }, [selectedPeriod]);
 
   const handleEditExpense = useCallback((expense: Expense) => {
     router.push({
@@ -193,7 +168,6 @@ export function HomeScreen() {
 
   const animatedMonthStyle = {
     opacity,
-    transform: [{ translateX }],
   };
 
   const renderHeader = () => (

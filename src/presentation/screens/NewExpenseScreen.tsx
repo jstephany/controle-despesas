@@ -16,6 +16,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import type { ExpenseCategory } from '@/domain/entities/Category';
+import type { MonthPeriod } from '@/domain/entities/Expense';
 import { formatCentsToInputValue } from '@/domain/services/currency';
 import {
   MAX_DESCRIPTION_LENGTH,
@@ -24,6 +25,8 @@ import {
 } from '@/domain/services/expenseValidation';
 import {
   formatIsoDateToBR,
+  getCurrentMonthPeriod,
+  getDefaultExpenseDateForPeriod,
   getRelativeIsoDate,
   getTodayIsoDate,
 } from '@/domain/utils/dateUtils';
@@ -35,6 +38,7 @@ import { theme } from '../theme/theme';
 
 interface NewExpenseScreenProps {
   readonly expenseId?: string;
+  readonly initialPeriod?: MonthPeriod;
 }
 
 function formatTypingDateBR(raw: string): string {
@@ -48,7 +52,10 @@ function formatTypingDateBR(raw: string): string {
   return `${digits.slice(0, 2)}/${digits.slice(2, 4)}/${digits.slice(4)}`;
 }
 
-export function NewExpenseScreen({ expenseId }: NewExpenseScreenProps) {
+export function NewExpenseScreen({
+  expenseId,
+  initialPeriod,
+}: NewExpenseScreenProps) {
   const { expenses, getExpenseById, addExpense, updateExpense } = useExpenses();
 
   const isEditMode = Boolean(expenseId);
@@ -58,6 +65,9 @@ export function NewExpenseScreen({ expenseId }: NewExpenseScreenProps) {
 
   const todayBR = formatIsoDateToBR(getTodayIsoDate());
   const yesterdayBR = formatIsoDateToBR(getRelativeIsoDate(-1));
+  const defaultNewDateBR = formatIsoDateToBR(
+    getDefaultExpenseDateForPeriod(initialPeriod ?? getCurrentMonthPeriod())
+  );
 
   const [amount, setAmount] = useState(() =>
     existingInMemory ? formatCentsToInputValue(existingInMemory.amountCents) : ''
@@ -66,7 +76,9 @@ export function NewExpenseScreen({ expenseId }: NewExpenseScreenProps) {
     () => existingInMemory?.description ?? ''
   );
   const [date, setDate] = useState(() =>
-    existingInMemory ? formatIsoDateToBR(existingInMemory.date) : todayBR
+    existingInMemory
+      ? formatIsoDateToBR(existingInMemory.date)
+      : defaultNewDateBR
   );
   const [category, setCategory] = useState<ExpenseCategory>(
     () => existingInMemory?.category ?? 'alimentacao'
