@@ -1,6 +1,6 @@
 import { Feather } from '@expo/vector-icons';
 import { router } from 'expo-router';
-import { useCallback } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -13,10 +13,16 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import {
+  getCategoryMetadata,
+  type ExpenseCategory,
+} from '@/domain/entities/Category';
 import type { Expense } from '@/domain/entities/Expense';
 import { formatCentsToBRL } from '@/domain/services/currency';
+import { filterExpensesByCategory } from '@/domain/services/expenseCalculations';
 import { formatMonthPeriodLabel } from '@/domain/utils/dateUtils';
 
+import { CategoryFilterBar } from '../components/CategoryFilterBar';
 import { EmptyState } from '../components/EmptyState';
 import { ExpenseItem } from '../components/ExpenseItem';
 import { MonthlySummaryCard } from '../components/MonthlySummaryCard';
@@ -40,8 +46,40 @@ export function HomeScreen() {
     refresh,
   } = useExpenses();
 
+  const [selectedChartCategory, setSelectedChartCategory] =
+    useState<ExpenseCategory | null>(null);
+  const [selectedCategoryFilter, setSelectedCategoryFilter] =
+    useState<ExpenseCategory | null>(null);
+
+  const visibleExpenses = useMemo(
+    () => filterExpensesByCategory(expenses, selectedCategoryFilter),
+    [expenses, selectedCategoryFilter]
+  );
+
+  const handlePreviousMonth = useCallback(() => {
+    setSelectedChartCategory(null);
+    goToPreviousMonth();
+  }, [goToPreviousMonth]);
+
+  const handleNextMonth = useCallback(() => {
+    setSelectedChartCategory(null);
+    goToNextMonth();
+  }, [goToNextMonth]);
+
+  const handleCurrentMonth = useCallback(() => {
+    setSelectedChartCategory(null);
+    goToCurrentMonth();
+  }, [goToCurrentMonth]);
+
   const handleOpenNewExpense = useCallback(() => {
     router.push('/new-expense');
+  }, []);
+
+  const handleEditExpense = useCallback((expense: Expense) => {
+    router.push({
+      pathname: '/new-expense',
+      params: { expenseId: expense.id },
+    });
   }, []);
 
   const handleConfirmDelete = useCallback(
@@ -78,6 +116,9 @@ export function HomeScreen() {
   );
 
   const monthLabel = formatMonthPeriodLabel(selectedPeriod);
+  const filteredCategoryLabel = selectedCategoryFilter
+    ? getCategoryMetadata(selectedCategoryFilter).label
+    : null;
 
   const renderHeader = () => (
     <View style={styles.listHeader}>
@@ -85,6 +126,8 @@ export function HomeScreen() {
         totalCents={monthlyTotalCents}
         expenseCount={expenses.length}
         categoryBreakdown={categoryBreakdown}
+        selectedCategory={selectedChartCategory}
+        onSelectCategory={setSelectedChartCategory}
       />
 
       {error ? (
@@ -100,8 +143,19 @@ export function HomeScreen() {
       <View style={styles.sectionHeader}>
         <Text style={styles.sectionTitle}>Lançamentos</Text>
         <Text style={styles.sectionSubtitle}>
-          {expenses.length > 0 ? 'Mais recentes primeiro' : 'Período selecionado'}
+          {selectedCategoryFilter
+            ? `${visibleExpenses.length} em ${filteredCategoryLabel}`
+            : expenses.length > 0
+              ? 'Toque para editar'
+              : 'Período selecionado'}
         </Text>
+      </View>
+
+      <View style={styles.filterBarWrapper}>
+        <CategoryFilterBar
+          selectedCategory={selectedCategoryFilter}
+          onSelectCategory={setSelectedCategoryFilter}
+        />
       </View>
     </View>
   );
@@ -112,6 +166,29 @@ export function HomeScreen() {
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="small" color={theme.colors.ink} />
           <Text style={styles.loadingText}>Carregando despesas...</Text>
+        </View>
+      );
+    }
+
+    if (selectedCategoryFilter && expenses.length > 0) {
+      return (
+        <View style={styles.filteredEmptyCard}>
+          <Text style={styles.filteredEmptyTitle}>
+            Sem gastos em {filteredCategoryLabel} neste mês
+          </Text>
+          <Text style={styles.filteredEmptySubtitle}>
+            O resumo acima continua exibindo todos os lançamentos do período.
+          </Text>
+          <Pressable
+            onPress={() => setSelectedCategoryFilter(null)}
+            accessibilityRole="button"
+            style={({ pressed }) => [
+              styles.clearFilterButton,
+              pressed && styles.clearFilterButtonPressed,
+            ]}
+          >
+            <Text style={styles.clearFilterLabel}>Ver todas as categorias</Text>
+          </Pressable>
         </View>
       );
     }
@@ -152,18 +229,19 @@ export function HomeScreen() {
         <View style={styles.selectorWrapper}>
           <MonthSelector
             period={selectedPeriod}
-            onPrevious={goToPreviousMonth}
-            onNext={goToNextMonth}
-            onResetToCurrent={goToCurrentMonth}
+            onPrevious={handlePreviousMonth}
+            onNext={handleNextMonth}
+            onResetToCurrent={handleCurrentMonth}
           />
         </View>
 
         <FlatList
-          data={expenses}
+          data={visibleExpenses}
           keyExtractor={(item) => item.id}
           renderItem={({ item }) => (
             <ExpenseItem
               expense={item}
+              onPress={handleEditExpense}
               onRequestDelete={handleConfirmDelete}
             />
           )}
@@ -267,7 +345,11 @@ const styles = StyleSheet.create({
   },
   sectionSubtitle: {
     ...theme.typography.caption,
+    ...theme.typography.tabularNums,
     color: theme.colors.textSecondary,
+  },
+  filterBarWrapper: {
+    marginTop: theme.spacing.md,
   },
   itemSeparator: {
     height: 10,
@@ -284,6 +366,42 @@ const styles = StyleSheet.create({
   loadingText: {
     ...theme.typography.caption,
     color: theme.colors.textSecondary,
+  },
+  filteredEmptyCard: {
+    backgroundColor: theme.colors.surface,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    borderRadius: theme.radius.card,
+    paddingHorizontal: theme.spacing.xl,
+    paddingVertical: theme.spacing.xl,
+    alignItems: 'center',
+    gap: 8,
+  },
+  filteredEmptyTitle: {
+    ...theme.typography.body,
+    fontWeight: '700',
+    color: theme.colors.textPrimary,
+    textAlign: 'center',
+  },
+  filteredEmptySubtitle: {
+    ...theme.typography.caption,
+    color: theme.colors.textSecondary,
+    textAlign: 'center',
+  },
+  clearFilterButton: {
+    marginTop: 6,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: theme.radius.pill,
+    backgroundColor: theme.colors.ink,
+  },
+  clearFilterButtonPressed: {
+    opacity: 0.85,
+  },
+  clearFilterLabel: {
+    ...theme.typography.caption,
+    fontWeight: '700',
+    color: theme.colors.textOnInk,
   },
   errorBanner: {
     flexDirection: 'row',

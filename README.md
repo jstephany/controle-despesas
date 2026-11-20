@@ -25,7 +25,7 @@ O projeto segue uma **Arquitetura Limpa Pragmática**, separando claramente as r
   - `theme/theme.ts`: tokens centralizados de cores, tipografia, espaçamentos, raios e paleta visual por categoria.
   - `context/ExpensesContext.tsx` e `hooks/useExpenses.ts`: estado reativo do período ativo, listagem, resumo mensal, gráfico por categoria e ações offline (`addExpense`, `deleteExpense`, navegação mês/ano).
   - `screens/HomeScreen.tsx` e `screens/NewExpenseScreen.tsx`: telas desacopladas de SQL e regras de validação, conectadas às rotas finas `app/index.tsx`, `app/new-expense.tsx` e `app/_layout.tsx`.
-  - `components/`: `MonthSelector`, `MonthlySummaryCard` (com mini gráfico de barras por categoria), `ExpenseItem`, `EmptyState`, `CategoryPicker` e `FormFieldError`.
+  - `components/`: `MonthSelector`, `MonthlySummaryCard` (gráfico circular/donut interativo com `react-native-svg` e barra de detalhe por categoria), `CategoryFilterBar` (filtro horizontal por categoria), `ExpenseItem` (toque para editar + exclusão), `EmptyState`, `CategoryPicker` e `FormFieldError`.
 
 ### Justificativa Técnica
 - **Valores monetários em centavos (`INTEGER`):** evita erros de arredondamento de ponto flutuante em somas mensais.
@@ -46,6 +46,7 @@ O projeto segue uma **Arquitetura Limpa Pragmática**, separando claramente as r
 | **Expo Router** | `~58.0.32` | Navegação baseada em arquivos (`app/`) |
 | **expo-sqlite** | `~58.0.18` | Banco de dados relacional local offline |
 | **@expo/vector-icons** | `^15.0.2` | Ícones geométricos nativos (Feather) compatíveis com Expo Go |
+| **react-native-svg** | `15.16.0` | Gráfico circular interativo (donut segmentado) compatível com Expo Go |
 | **Jest** | `~30.5.2` | Runner de testes unitários |
 | **jest-expo** | `~58.0.15` | Preset oficial de testes para Expo |
 | **eslint-config-expo** | `~58.0.4` | Lint oficial do ecossistema Expo (Flat Config) |

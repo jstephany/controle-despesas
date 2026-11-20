@@ -30,6 +30,16 @@ export function filterExpensesByMonth(
   );
 }
 
+export function filterExpensesByCategory(
+  expenses: readonly Expense[],
+  category: ExpenseCategory | null
+): Expense[] {
+  if (!category) {
+    return [...expenses];
+  }
+  return expenses.filter((expense) => expense.category === category);
+}
+
 export function sortExpensesChronologically(
   expenses: readonly Expense[]
 ): Expense[] {

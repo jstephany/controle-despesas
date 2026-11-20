@@ -10,49 +10,63 @@ import { getCategoryVisual, theme } from '../theme/theme';
 
 interface ExpenseItemProps {
   readonly expense: Expense;
+  readonly onPress: (expense: Expense) => void;
   readonly onRequestDelete: (expense: Expense) => void;
 }
 
-export function ExpenseItem({ expense, onRequestDelete }: ExpenseItemProps) {
+export function ExpenseItem({
+  expense,
+  onPress,
+  onRequestDelete,
+}: ExpenseItemProps) {
   const categoryMeta = getCategoryMetadata(expense.category);
   const visual = getCategoryVisual(expense.category);
 
   return (
     <View style={styles.card}>
-      <View style={[styles.iconBadge, { backgroundColor: visual.fill }]}>
-        <Feather name={visual.icon} size={18} color={theme.colors.textPrimary} />
-      </View>
-
-      <View style={styles.content}>
-        <Text style={styles.description} numberOfLines={1}>
-          {expense.description}
-        </Text>
-        <View style={styles.metaRow}>
-          <Text style={styles.metaText} numberOfLines={1}>
-            {categoryMeta.label}
-          </Text>
-          <View style={styles.metaDot} />
-          <Text style={styles.metaDate}>{formatIsoDateToBR(expense.date)}</Text>
+      <Pressable
+        onPress={() => onPress(expense)}
+        accessibilityRole="button"
+        accessibilityLabel={`Editar despesa ${expense.description}`}
+        style={({ pressed }) => [
+          styles.mainTouchable,
+          pressed && styles.mainTouchablePressed,
+        ]}
+      >
+        <View style={[styles.iconBadge, { backgroundColor: visual.fill }]}>
+          <Feather name={visual.icon} size={18} color={theme.colors.textPrimary} />
         </View>
-      </View>
 
-      <View style={styles.trailing}>
+        <View style={styles.content}>
+          <Text style={styles.description} numberOfLines={1}>
+            {expense.description}
+          </Text>
+          <View style={styles.metaRow}>
+            <Text style={styles.metaText} numberOfLines={1}>
+              {categoryMeta.label}
+            </Text>
+            <View style={styles.metaDot} />
+            <Text style={styles.metaDate}>{formatIsoDateToBR(expense.date)}</Text>
+          </View>
+        </View>
+
         <Text style={styles.amount} numberOfLines={1}>
           {formatCentsToBRL(expense.amountCents)}
         </Text>
-        <Pressable
-          onPress={() => onRequestDelete(expense)}
-          hitSlop={8}
-          accessibilityRole="button"
-          accessibilityLabel={`Excluir despesa ${expense.description}`}
-          style={({ pressed }) => [
-            styles.deleteButton,
-            pressed && styles.deleteButtonPressed,
-          ]}
-        >
-          <Feather name="trash-2" size={15} color={theme.colors.danger} />
-        </Pressable>
-      </View>
+      </Pressable>
+
+      <Pressable
+        onPress={() => onRequestDelete(expense)}
+        hitSlop={8}
+        accessibilityRole="button"
+        accessibilityLabel={`Excluir despesa ${expense.description}`}
+        style={({ pressed }) => [
+          styles.deleteButton,
+          pressed && styles.deleteButtonPressed,
+        ]}
+      >
+        <Feather name="trash-2" size={15} color={theme.colors.danger} />
+      </Pressable>
     </View>
   );
 }
@@ -65,9 +79,19 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: theme.colors.border,
     borderRadius: theme.radius.item,
-    paddingHorizontal: 14,
-    paddingVertical: 13,
+    paddingLeft: 14,
+    paddingRight: 12,
+    paddingVertical: 12,
+    gap: 10,
+  },
+  mainTouchable: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
     gap: 12,
+  },
+  mainTouchablePressed: {
+    opacity: 0.72,
   },
   iconBadge: {
     width: 44,
@@ -107,11 +131,6 @@ const styles = StyleSheet.create({
     ...theme.typography.caption,
     ...theme.typography.tabularNums,
     color: theme.colors.textSecondary,
-  },
-  trailing: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
   },
   amount: {
     ...theme.typography.body,

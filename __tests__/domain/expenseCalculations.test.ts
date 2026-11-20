@@ -3,6 +3,7 @@ import {
   calculateCategoryBreakdown,
   calculateMonthlySummary,
   calculateMonthlyTotal,
+  filterExpensesByCategory,
   filterExpensesByMonth,
   sortExpensesChronologically,
 } from '@/domain/services/expenseCalculations';
@@ -127,6 +128,26 @@ describe('expenseCalculations', () => {
       const breakdown = calculateCategoryBreakdown([]);
       expect(breakdown).toHaveLength(7);
       expect(breakdown.every((item) => item.totalCents === 0 && item.ratioToMax === 0)).toBe(true);
+    });
+  });
+
+  describe('filterExpensesByCategory', () => {
+    it('retorna todas as despesas quando categoria é nula e filtra corretamente quando selecionada', () => {
+      const novExpenses = filterExpensesByMonth(sampleExpenses, { year: 2026, month: 11 });
+
+      expect(filterExpensesByCategory(novExpenses, null).map((e) => e.id)).toEqual([
+        'exp_1',
+        'exp_2',
+        'exp_3',
+      ]);
+      expect(filterExpensesByCategory(novExpenses, 'alimentacao').map((e) => e.id)).toEqual([
+        'exp_1',
+        'exp_3',
+      ]);
+      expect(filterExpensesByCategory(novExpenses, 'transporte').map((e) => e.id)).toEqual([
+        'exp_2',
+      ]);
+      expect(filterExpensesByCategory(novExpenses, 'saude')).toEqual([]);
     });
   });
 });
