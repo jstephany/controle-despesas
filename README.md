@@ -4,13 +4,14 @@ Aplicativo mobile de controle de despesas pessoais desenvolvido com **React Nati
 
 ## Capturas de Tela
 
-| Início | Nova / Editar Despesa | Análise |
-| :---: | :---: | :---: |
-| ![Tela Inicial](./docs/screenshots/inicio.jpeg) | ![Nova Despesa](./docs/screenshots/cadastro.jpeg) | ![Tela de Análise](./docs/screenshots/analise.jpeg) |
+|                    Início                     |               Nova / Editar Despesa               |                       Análise                        |
+| :-------------------------------------------: | :-----------------------------------------------: | :--------------------------------------------------: |
+| ![Tela Inicial](./docs/screenshots/home.jpeg) | ![Nova Despesa](./docs/screenshots/cadastro.jpeg) | ![Tela de Análise](./docs/screenshots/analise2.jpeg) |
 
 ## Funcionalidades
 
 ### Obrigatórias (RF01–RF07)
+
 - **RF01 — Cadastro:** registro de despesa com descrição obrigatória, valor numérico estritamente maior que zero, data e categoria.
 - **RF02 — Listagem:** exibição cronológica (mais recentes primeiro) com descrição, valor, data e categoria.
 - **RF03 — Resumo mensal:** cálculo e exibição do total gasto no mês selecionado.
@@ -20,11 +21,12 @@ Aplicativo mobile de controle de despesas pessoais desenvolvido com **React Nati
 - **RF07 — Validação:** bloqueio de campos ausentes, valores inválidos (zero, negativos ou texto) e datas inexistentes com mensagens inline.
 
 ### Opcionais implementadas
+
 - Edição de despesa ao tocar em qualquer lançamento da lista.
 - Gráfico circular interativo (donut) exibindo apenas categorias com gasto no mês, com detalhe por categoria ao tocar.
 - Filtro horizontal por categoria na tela inicial (sem alterar o resumo do mês).
 - Orçamento mensal opcional (SQLite) com barra de progresso em 3 níveis (normal ≤ 75%, atenção 76%–99% e excedido ≥ 100%).
-- Tela de Análise por período (*3 meses*, *6 meses*, *Este ano* e *Tudo*), média mensal, gráfico de evolução e ranking de categorias.
+- Tela de Análise por período (_3 meses_, _6 meses_, _Este ano_ e _Tudo_), média mensal, gráfico de evolução e ranking de categorias.
 - Exportação offline de relatório em **CSV** (mensal na tela inicial e filtrado na tela de análise) via compartilhamento nativo.
 - Layout responsivo para celulares compactos e tablets (`maxWidth` centralizado e `supportsTablet: true`).
 
